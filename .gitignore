@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# custom
+EdoTensei-Selenium.py
+login.json
+TODO.txt
+drivers/*
+images/*
+forge-scraper.py
