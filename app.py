@@ -7,6 +7,8 @@ import qasync
 import sys
 import asyncio
 import functools
+import logging
+import structlog
 
 import gui.main_window
 import gui.main_frame
@@ -137,8 +139,19 @@ async def main():
 
 
 
+def suppress_logs():
+    # this suppresses the excessive amount of logs printed to console/stdout
+    logger = logging.getLogger('arsenic')
+    def logger_factory():
+        return logger
+    structlog.configure(logger_factory=logger_factory)
+    logger.setLevel(logging.WARNING)
+
+
+
 if __name__ == '__main__':
     try:
+        suppress_logs()
         qasync.run(main())
     except asyncio.exceptions.CancelledError:
         sys.exit(0)
