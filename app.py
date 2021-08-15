@@ -1,6 +1,6 @@
 # dependencies
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem
 from PyQt5.QtGui import QIcon, QPixmap, QPalette
 import qasync
 
@@ -16,27 +16,7 @@ import gui.ninja_card_frame
 import EdoTensei
 import signals
 import utilities as util
-
-
-
-class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
-    def __init__(self, ninja_info):
-        super().__init__()
-        self.setupUi(self)
-        self.image.setPixmap(QPixmap(f'./{ninja_info.image_dir}'))
-        self.ninja_name.setText(ninja_info.name)
-        self.ninja_exp.setText(f'Lv.{int(ninja_info.exp/100)}@{ninja_info.exp%100}%')
-        self.ninja_exp_gain.setText('+0%')
-        self.bl_name.setText(ninja_info.BL_name)
-        self.bl_exp.setText(f'Lv.{int(ninja_info.BL_exp/100)}@{ninja_info.BL_exp%100}%')
-        self.bl_exp_gain.setText('+0%')
-
-
-
-
-
-
-
+import DBHandler
 
 
 
@@ -44,16 +24,36 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
+        self.db = DBHandler.DBHandler('quantity_1')
         self.sigs = signals.Signals()
-        self.bot = EdoTensei.EdoTensei(self.sigs)
+        self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
         self.connect_events()
+        self.init_labels()
 
 
 
     def connect_events(self):
         self.launch_button.clicked.connect(self.launch_or_close)
         self.start_button.clicked.connect(self.start_or_pause)
-        self.sigs.ninja_signal.connect(self.add_ninja_card)
+        self.sigs.update_loop_count.connect(self.update_loop_label)
+        self.sigs.update_error_count.connect(self.update_error_label)
+        self.sigs.update_gold.connect(self.update_gold_labels)
+        self.sigs.update_world_stats.connect(self.update_world_labels)
+        self.sigs.update_arena_stats.connect(self.update_arena_labels)
+        self.sigs.update_items_gained.connect(self.update_items_table)
+        self.sigs.add_ninja_card.connect(self.add_ninja_card)
+
+
+
+    def init_labels(self):
+        self.loop_count_label.setText('0')
+        self.error_count_label.setText('0')
+        self.gold_current_label.setText('0')
+        # self.gold_gained_label.setText('+0')
+        self.world_wins_label.setText('0')
+        self.world_losses_label.setText('0')
+        self.arena_wins_label.setText('0')
+        self.arena_losses_label.setText('0')
 
 
 
@@ -72,7 +72,8 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-    def start_or_pause(self):
+    @qasync.asyncSlot()
+    async def start_or_pause(self):
         if self.bot.state == EdoTensei.State.RUNNING:
             self.start_button.setIcon(QIcon('./icons/pause.png'))
             self.status_info_label.setText('manually paused')
@@ -83,10 +84,68 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-    def add_ninja_card(self, ninja_info):
+    # updating labels and such
+    @qasync.asyncSlot()
+    async def set_team_label(self, name: str):
+        self.team_label.setText(name)
+
+    @qasync.asyncSlot()
+    async def update_loop_label(self):
+        count = int(self.loop_count_label.text()) + 1
+        self.loop_count_label.setText(str(count))
+
+    @qasync.asyncSlot()
+    async def update_error_label(self):
+        count = int(self.loop_error_label.text()) + 1
+        self.error_count_label.setText(str(count))
+
+    @qasync.asyncSlot(int)
+    async def update_gold_labels(self, new_curr: int):
+        old_curr = int(self.gold_current_label.text())
+        self.gold_current_label.setText(str(new_curr))
+
+        if self.gold_gained_label.text():
+            old_gained = int(self.gold_gained_label.text())
+            new_gained = old_gained + (new_curr - old_curr)
+            self.gold_gained_label.setText(f'+{new_gained}')
+        else:
+            self.gold_gained_label.setText(f'+0')
+
+    @qasync.asyncSlot(bool)
+    async def update_world_labels(self, win: bool):
+        if win:
+            count = int(self.world_wins_label.text()) + 1
+            self.world_wins_label.setText(str(count))
+        else:
+            count = int(self.world_losses_label.text()) + 1
+            self.world_losses_label.setText(str(count))
+
+    @qasync.asyncSlot(bool)
+    async def update_arena_labels(self, win: bool):
+        if win:
+            count = int(self.arena_wins_label.text()) + 1
+            self.arena_wins_label.setText(str(count))
+        else:
+            count = int(self.arena_losses_label.text()) + 1
+            self.arena_losses_label.setText(str(count))
+
+    @qasync.asyncSlot(str)
+    async def update_items_table(self, name: str):
+        cell = self.items_gained_table.findItems(name, Qt.MatchFixedString)
+        if cell:
+            row = self.items_gained_table.row(cell[0])
+            qty_cell = self.items_gained_table.itemAt(row, 0)
+            qty_cell.setText(str(int(qty_cell.text()+1)))
+        else:
+            row = self.items_gained_table.rowCount()
+            self.items_gained_table.insertRow(row)
+            self.items_gained_table.setItem(row, 0, QTableWidgetItem('1'))
+            self.items_gained_table.setItem(row, 1, QTableWidgetItem(name))
+
+    @qasync.asyncSlot(object)
+    async def add_ninja_card(self, ninja_card: EdoTensei.Ninja_Card):
         # note that this only ADDS and will not update existing cards
-        new_card = Ninja_Card(ninja_info)
-        self.ninja_info_area.addWidget(new_card)
+        self.ninja_info_area.addWidget(ninja_card)
 
 
 

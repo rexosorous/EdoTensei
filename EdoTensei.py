@@ -1,5 +1,4 @@
 # standard python modules
-from time import sleep
 from random import uniform
 import urllib.request
 import os
@@ -9,11 +8,13 @@ from enum import Enum
 import arsenic
 from bs4 import BeautifulSoup
 import qasync
+from PyQt5.QtWidgets import QFrame
+from PyQt5.QtGui import QPixmap
 
 # local modules
-import DataStructures
 import asyncio
 import utilities as util
+import gui.ninja_card_frame
 
 
 
@@ -24,14 +25,60 @@ class State(Enum):
 
 
 
+class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
+    def __init__(self, name: str, image_dir: str, exp: int, BL_name: str, BL_exp: int):
+        # big note. changes here don't have to be 'updated' for it to reflect in the gui
+        super().__init__()
+        self.setupUi(self)
+        self.name = name
+        self.image_dir = image_dir
+        self.ninja_exp_start = exp
+        self.ninja_exp_curr = exp
+        self.ninja_exp_gain = 0
+        self.BL_name = BL_name
+        self.BL_exp_start = BL_exp
+        self.BL_exp_curr = BL_exp
+        self.BL_exp_gain = 0
+
+        self.init_labels()
+
+    def init_labels(self):
+        self.image.setPixmap(QPixmap(f'./{self.image_dir}'))
+        self.ninja_name_label.setText(self.name)
+        self.ninja_exp_curr_label.setText(f'Lv.{int(self.ninja_exp_curr/100)}@{self.ninja_exp_curr%100}%')
+        self.ninja_exp_gain_label.setText(f'+{self.ninja_exp_gain}%')
+        self.bl_name_label.setText(self.BL_name)
+        self.bl_exp_curr_label.setText(f'Lv.{int(self.BL_exp_curr/100)}@{self.BL_exp_curr%100}%')
+        self.bl_exp_gain_label.setText(f'+{self.BL_exp_gain}%')
+
+
+    def update_exp(self, ninja: int, BL: int):
+        self.ninja_exp_curr = ninja
+        self.ninja_exp_gain = self.ninja_exp_curr - self.ninja_exp_start
+        self.ninja_exp_curr_label.setText(f'Lv.{int(self.ninja_exp_curr/100)}@{self.ninja_exp_curr%100}%')
+        self.ninja_exp_gain_label.setText(f'+{self.ninja_exp_gain}%')
+
+        self.BL_exp_curr = ninja
+        self.BL_exp_gain = self.BL_exp_curr - self.BL_exp_start
+        self.bl_exp_curr_label.setText(f'Lv.{int(self.BL_exp_curr/100)}@{self.BL_exp_curr%100}%')
+        self.bl_exp_gain_label.setText(f'+{self.BL_exp_gain}%')
+
+
+
+
+
+
+
 class EdoTensei:
-    def __init__(self, sigs):
-        self.sigs = sigs
+    def __init__(self, db, sigs):
+        # arsenic stuff
         self.service = arsenic.services.Chromedriver(binary='./drivers/chromedriver.exe')
         self.driver = arsenic.browsers.Chrome()
         self.browser = None     # this is arsenic/webdriver and NOT gui
-        self.ninjas = {}
-        self.items = []     # items are NOT mats!!!
+
+        self.db = db
+        self.sigs = sigs
+        self.ninjas = dict()
         self.state = State.STOPPED
         self.cooldown_time = [900, 1200]     # in seconds
 
@@ -80,6 +127,7 @@ class EdoTensei:
     @qasync.asyncSlot()
     async def loop(self):
         while True:
+            self.sigs.update_loop_count.emit()
             await self.scrape()
 
             await self.arena_actions()
@@ -98,8 +146,6 @@ class EdoTensei:
         await self.sleep_(1, 3)
         await self.gather_ninja_data()
         await self.sleep_()
-        # await self.gather_equipment_data()
-        # await self.sleep_()
         await self.gather_forge_data()
         await self.sleep_()
         await self.browser.get('https://www.ninjamanager.com')
@@ -111,8 +157,7 @@ class EdoTensei:
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
         gold = int(html.find('div', class_='js-header-gold').span.string.replace(',', ''))
-        # send pyqtsignal to update gold in the gui
-        # we probably don't need to save the energy in a global variable. we can probably just pass it on to the functions that need them
+        self.sigs.update_gold.emit(gold)
 
 
 
@@ -123,15 +168,16 @@ class EdoTensei:
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
         ninja_urls = ['https://www.ninjamanager.com/myteam/ninja/' + nin['data-tnid'] for nin in html.find_all('div', class_='c-ninja-box__card')]
+        self.sleep_()
 
         for url in ninja_urls:
-            await self.sleep_()
             await self.browser.get(url)
+            await self.sleep_()
             raw_html = await self.browser.get_page_source()
             html = BeautifulSoup(raw_html, 'html.parser')
             
             ninja_card = html.find('div', class_='m-ninja-details__column -c-squeezed').div
-            id_ = ninja_card.find('div', class_='c-card -size-l  m-ninja-details__card')['data-tnid']
+            id_ = ninja_card['data-tnid']
             img_url = 'https://www.ninjamanager.com' + ninja_card.find('div', class_='c-card__pic-inner').img['src'].replace('large', 'medium').replace('jpg', 'png')
             img_filename = img_url.split('/')[-1]
             name = img_filename[:-4].replace('-', ' ')
@@ -164,32 +210,17 @@ class EdoTensei:
                         file.write(urllib.request.urlopen(img_url).read())
 
             if id_ not in self.ninjas:
-                self.ninjas[id_] = DataStructures.Ninja(name, f'images/{img_filename}', ninja_exp, BL_name, BL_exp)
+                self.ninjas[id_] = Ninja_Card(name, f'images/{img_filename}', ninja_exp, BL_name, BL_exp)
+                self.sigs.add_ninja_card.emit(self.ninjas[id_])
             else:
                 self.ninjas[id_].update_exp(ninja=ninja_exp, BL=BL_exp)
-
-            self.sigs.ninja_signal.emit(self.ninjas[name])
             
         await self.sleep_()
-        
-
-
-    @qasync.asyncSlot()
-    async def gather_equipment_data(self):
-        # this isn't for figuring out if you have the right equipment to use as a mat for forge,
-        # this is to figure out if you obtained a dropped LW
-        # perhaps this is redundant if we can figure out how to analyze the world win screen
-        await self.browser.get('https://www.ninjamanager.com/myteam/equipment')
-        
-        raw_html = await self.browser.get_page_source()
-        html = BeautifulSoup(raw_html, 'html.parser')
-        self.items = [item_card.find('div', class_='c-item__name').string for item_card in html.find_all('div', class_='c-inventory-box')]
 
 
 
     @qasync.asyncSlot()
     async def gather_forge_data(self):
-        # only a rough skeleton right now. does not interace with the DB yet as i have not designed that
         await self.browser.get('https://www.ninjamanager.com/forge')
         
         raw_html = await self.browser.get_page_source()
@@ -198,8 +229,10 @@ class EdoTensei:
         materials = mat_area.find_all('div', class_='pc-forge-ingredient')
 
         for mat in materials:
-            print(f"{mat.find('div', class_='c-item__amount').string}x {mat.find('div', class_='c-item__name').string}")
-
+            name = mat.find('div', class_='c-item__name').string
+            quantity = int(mat.find('div', class_='c-item__amount').string)
+            self.db.update_quantity(name, quantity)
+            
 
 
     @qasync.asyncSlot()
@@ -288,10 +321,15 @@ class EdoTensei:
 
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
+        win_text = html.find('div', class_='pm-battle-matchup__title').string
+        is_win = True if win_text == 'Victory' else False  # the other is Defeat
+        self.sigs.update_world_stats(is_win)
         for drop in html.find_all('div', class_='pm-battle-treasures__drop'):
             # it is not possible to get item id this way
             name = drop.find('div', class_='c-item__name').string
             success = True if '-status-done' in drop['class'] else False      # -status-failed or -status-done
+            if success:
+                self.sigs.update_items_gained.emit(name)
 
         finish_button = await self.browser.wait_for_element(5, f'div[class=pm-battle-buttons__finish]')
         await self.sleep_(1, 3)
@@ -309,6 +347,7 @@ class EdoTensei:
     async def sleep_(self, min: int = 5, max: int = 8):
         # sleeps for a random amount of time between min and max
         await asyncio.sleep(uniform(min, max))
+
 
 
     @qasync.asyncSlot()

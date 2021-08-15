@@ -329,7 +329,7 @@
                    </widget>
                   </item>
                   <item row="1" column="1">
-                   <widget class="QLabel" name="label_6">
+                   <widget class="QLabel" name="team_label">
                     <property name="text">
                      <string/>
                     </property>
@@ -444,6 +444,81 @@
                     </property>
                    </widget>
                   </item>
+                  <item row="4" column="1">
+                   <widget class="QFrame" name="frame_9">
+                    <property name="palette">
+                     <palette>
+                      <active>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>255</red>
+                          <green>170</green>
+                          <blue>0</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </active>
+                      <inactive>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>255</red>
+                          <green>170</green>
+                          <blue>0</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </inactive>
+                      <disabled>
+                       <colorrole role="WindowText">
+                        <brush brushstyle="SolidPattern">
+                         <color alpha="255">
+                          <red>120</red>
+                          <green>120</green>
+                          <blue>120</blue>
+                         </color>
+                        </brush>
+                       </colorrole>
+                      </disabled>
+                     </palette>
+                    </property>
+                    <property name="frameShape">
+                     <enum>QFrame::StyledPanel</enum>
+                    </property>
+                    <property name="frameShadow">
+                     <enum>QFrame::Raised</enum>
+                    </property>
+                    <layout class="QHBoxLayout" name="horizontalLayout_3">
+                     <property name="leftMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QLabel" name="gold_current_label">
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="gold_gained_label">
+                       <property name="text">
+                        <string/>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
                   <item row="5" column="0">
                    <widget class="QLabel" name="label_17">
                     <property name="text">
@@ -520,7 +595,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="wolrd_losses_label">
+                      <widget class="QLabel" name="world_losses_label">
                        <property name="palette">
                         <palette>
                          <active>
@@ -703,7 +778,7 @@
                    </widget>
                   </item>
                   <item row="8" column="0" colspan="2">
-                   <widget class="QTextBrowser" name="items_gained_textbox">
+                   <widget class="QTableWidget" name="items_gained_table">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                       <horstretch>0</horstretch>
@@ -713,81 +788,19 @@
                     <property name="maximumSize">
                      <size>
                       <width>16777215</width>
-                      <height>160</height>
+                      <height>153</height>
                      </size>
                     </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="1">
-                   <widget class="QFrame" name="frame_9">
-                    <property name="palette">
-                     <palette>
-                      <active>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>255</red>
-                          <green>170</green>
-                          <blue>0</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </active>
-                      <inactive>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>255</red>
-                          <green>170</green>
-                          <blue>0</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </inactive>
-                      <disabled>
-                       <colorrole role="WindowText">
-                        <brush brushstyle="SolidPattern">
-                         <color alpha="255">
-                          <red>120</red>
-                          <green>120</green>
-                          <blue>120</blue>
-                         </color>
-                        </brush>
-                       </colorrole>
-                      </disabled>
-                     </palette>
-                    </property>
-                    <property name="frameShape">
-                     <enum>QFrame::StyledPanel</enum>
-                    </property>
-                    <property name="frameShadow">
-                     <enum>QFrame::Raised</enum>
-                    </property>
-                    <layout class="QHBoxLayout" name="horizontalLayout_3">
-                     <property name="topMargin">
-                      <number>0</number>
+                    <column>
+                     <property name="text">
+                      <string>qty</string>
                      </property>
-                     <property name="rightMargin">
-                      <number>0</number>
+                    </column>
+                    <column>
+                     <property name="text">
+                      <string>item</string>
                      </property>
-                     <property name="bottomMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QLabel" name="gold_current_label">
-                       <property name="text">
-                        <string/>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="gold_gained_label">
-                       <property name="text">
-                        <string/>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
+                    </column>
                    </widget>
                   </item>
                  </layout>

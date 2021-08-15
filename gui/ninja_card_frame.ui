@@ -42,6 +42,9 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
+     <property name="frameShape">
+      <enum>QFrame::Box</enum>
+     </property>
     </widget>
    </item>
    <item>
@@ -69,7 +72,7 @@
        <number>0</number>
       </property>
       <item>
-       <widget class="QLabel" name="ninja_name">
+       <widget class="QLabel" name="ninja_name_label">
         <property name="font">
          <font>
           <family>Century Gothic</family>
@@ -110,7 +113,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="ninja_exp">
+          <widget class="QLabel" name="ninja_exp_curr_label">
            <property name="text">
             <string>Lv. 10@12%</string>
            </property>
@@ -127,7 +130,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="ninja_exp_gain">
+          <widget class="QLabel" name="ninja_exp_gain_label">
            <property name="text">
             <string>+27%</string>
            </property>
@@ -137,7 +140,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="bl_name">
+       <widget class="QLabel" name="bl_name_label">
         <property name="font">
          <font>
           <pointsize>12</pointsize>
@@ -177,7 +180,7 @@
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="bl_exp">
+          <widget class="QLabel" name="bl_exp_curr_label">
            <property name="text">
             <string>Lv. 3@98%</string>
            </property>
@@ -194,7 +197,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QLabel" name="bl_exp_gain">
+          <widget class="QLabel" name="bl_exp_gain_label">
            <property name="text">
             <string>+2%</string>
            </property>
