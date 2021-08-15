@@ -135,4 +135,5 @@ login.json
 TODO.txt
 drivers/*
 images/*
-forge-scraper.py
+/tools
+forge-clean.db

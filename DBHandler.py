@@ -4,20 +4,15 @@ class DBHandler:
     def __init__(self):
         self.conn = sqlite3.connect('forge.db')
         self.db = self.conn.cursor()
-        self.create_tables()
+        # self.create_tables()
         # self.populate_tables()
 
     def create_tables(self):
         self.db.execute('CREATE TABLE IF NOT EXISTS item_types (id INTEGER, name TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS difficulties (id INTEGER, name TEXT)')
-
-        self.db.execute('CREATE TABLE IF NOT EXISTS product (id INTEGER, name TEXT, type INTEGER)') # final LWs and BLs
-        self.db.execute('CREATE TABLE IF NOT EXISTS ingredients (id INTEGER, name TEXT, img_dir TEXT, type INTEGER, quantity INTEGER)') # qty can also be level
-
-        self.db.execute('CREATE TABLE IF NOT EXISTS locations (id INTEGER, name TEXT, url TEXT)')
-        self.db.execute('CREATE TABLE IF NOT EXISTS drops (item_id INTEGER, item_type INTEGER, location_id INTEGER, droprate REAL, difficulty INTEGER)')
-        self.db.execute('CREATE TABLE IF NOT EXISTS recipes (product_id INTEGER, product_type INTEGER, ingredient_id INTEGER, ingredient_type INTEGER, quantity INTEGER)')
-
+        self.db.execute('CREATE TABLE IF NOT EXISTS items (id INTEGER, name TEXT, item_type_id INTEGER, quantity INTEGER)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS drops (item_id INTEGER, location_url TEXT, droprate REAL, difficulty_id INTEGER)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS recipes (product_id INTEGER, ingredient_id INTEGER, quantity INTEGER)')
         self.conn.commit()
 
     def populate_tables(self):
