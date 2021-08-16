@@ -21,12 +21,13 @@ import DBHandler
 
 
 class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
-    def __init__(self):
+    def __init__(self, account: str):
+        # account should be "account_1" or "account_2"
         super().__init__()
         self.setupUi(self)
-        self.db = DBHandler.DBHandler('quantity_1')
+        self.db = DBHandler.DBHandler(account)
         self.sigs = signals.Signals()
-        self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
+        self.bot = EdoTensei.EdoTensei(self.db, self.sigs, account)
         self.connect_events()
         self.init_labels()
 
@@ -164,14 +165,18 @@ class Main_Window(QMainWindow, gui.main_window.Ui_MainWindow):
         self.init_gui()
 
     def init_gui(self):
-        self.chrome_gui = Main_Frame()
-        self.chrome_layout = QGridLayout(self.chrome_tab)
-        self.chrome_layout.addWidget(self.chrome_gui)
+        self.account_1_gui = Main_Frame('account_1')
+        self.account_1_layout = QGridLayout(self.account_1_tab)
+        self.account_1_layout.addWidget(self.account_1_gui)
+
+        self.account_2_gui = Main_Frame('account_2')
+        self.account_2_layout = QGridLayout(self.account_2_tab)
+        self.account_2_layout.addWidget(self.account_2_gui)
 
     @qasync.asyncClose
     async def closeEvent(self, event):
-        await self.chrome_gui.bot.shutdown()
-        
+        await self.account_1_gui.bot.shutdown()
+        await self.account_2_gui.bot.shutdown()
 
 
 

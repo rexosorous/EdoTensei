@@ -20,14 +20,14 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="QWidget" name="chrome_tab">
+      <widget class="QWidget" name="account_1_tab">
        <attribute name="title">
-        <string>Chrome</string>
+        <string>Account #1</string>
        </attribute>
       </widget>
-      <widget class="QWidget" name="firefox_tab">
+      <widget class="QWidget" name="account_2_tab">
        <attribute name="title">
-        <string>Firefox</string>
+        <string>Account #2</string>
        </attribute>
       </widget>
      </widget>
@@ -40,7 +40,7 @@
      <x>0</x>
      <y>0</y>
      <width>1238</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

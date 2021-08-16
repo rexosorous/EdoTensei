@@ -1,5 +1,5 @@
 {
-    "chrome": {
+    "account_1": {
         "username": "PUT YOUR LOGIN USERNAME HERE",
         "password": "PUT YOUR LOGIN PASSWORD HERE",
         "login_cookie": "OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE",
@@ -13,7 +13,7 @@
         "item_helper": {},
         "notes": ""
     },
-    "firefox": {
+    "account_2": {
         "username": "PUT YOUR LOGIN USERNAME HERE",
         "password": "PUT YOUR LOGIN PASSWORD HERE",
         "login_cookie": "OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE",

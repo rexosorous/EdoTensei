@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'main_window.ui'
+# Form implementation generated from reading ui file 'gui/main_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -21,16 +21,16 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName("tabWidget")
-        self.chrome_tab = QtWidgets.QWidget()
-        self.chrome_tab.setObjectName("chrome_tab")
-        self.tabWidget.addTab(self.chrome_tab, "")
-        self.firefox_tab = QtWidgets.QWidget()
-        self.firefox_tab.setObjectName("firefox_tab")
-        self.tabWidget.addTab(self.firefox_tab, "")
+        self.account_1_tab = QtWidgets.QWidget()
+        self.account_1_tab.setObjectName("account_1_tab")
+        self.tabWidget.addTab(self.account_1_tab, "")
+        self.account_2_tab = QtWidgets.QWidget()
+        self.account_2_tab.setObjectName("account_2_tab")
+        self.tabWidget.addTab(self.account_2_tab, "")
         self.verticalLayout.addWidget(self.tabWidget)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1238, 22))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1238, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -44,5 +44,5 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.chrome_tab), _translate("MainWindow", "Chrome"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.firefox_tab), _translate("MainWindow", "Firefox"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.account_1_tab), _translate("MainWindow", "Account #1"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.account_2_tab), _translate("MainWindow", "Account #2"))

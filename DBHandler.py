@@ -11,8 +11,8 @@ class NotFoundError(Exception):
 
 
 class DBHandler:
-    def __init__(self, account: str = 'quantity_1'):
-        # account should either be 'quantity_1' or 'quantity_2
+    def __init__(self, account: str = 'account_1'):
+        # account should either be 'account_1' or 'account_2
         self.conn = sqlite3.connect('forge.db')
         self.db = self.conn.cursor()
         self.account = account
@@ -57,7 +57,7 @@ class DBHandler:
 
     def update_quantity(self, id_or_name: int or str, qty: int):
         if isinstance(id_or_name, int):
-            self.db.execute(f'UPDATE items SET {self.account}={qty} WHERE id={id_or_name}')
+            self.db.execute(f'UPDATE items SET quantity_{self.account}={qty} WHERE id={id_or_name}')
         elif isinstance(id_or_name, str):
-            self.db.execute(f'UPDATE items SET {self.account}={qty} WHERE name="{id_or_name}"')
+            self.db.execute(f'UPDATE items SET quantity_{self.account}={qty} WHERE name="{id_or_name}"')
         self.conn.commit()

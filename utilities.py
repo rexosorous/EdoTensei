@@ -6,7 +6,7 @@ class Colors:
     RED = QPalette()
     RED.setColor(QPalette.WindowText, Qt.red)
 
-async def get_account() -> dict:
-    with open('login.json', 'r') as file:
-        account = json.load(file)
-    return account
+def load_settings(account: str) -> dict():
+    with open('settings.json', 'r') as file:
+        settings = json.load(file)
+    return settings[account]

@@ -72,7 +72,7 @@ class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
 
 
 class EdoTensei:
-    def __init__(self, db, sigs):
+    def __init__(self, db, sigs, account: str):
         # arsenic stuff
         self.service = arsenic.services.Chromedriver(binary='./drivers/chromedriver.exe')
         self.driver = arsenic.browsers.Chrome()
@@ -82,7 +82,7 @@ class EdoTensei:
         self.sigs = sigs
         self.ninjas = dict()
         self.state = State.STOPPED
-        self.cooldown_time = [900, 1200]     # in seconds
+        self.settings = util.load_settings(account)
 
 
 
@@ -106,16 +106,25 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def login(self, account = None):
+        # prefer using cookies over login info
+        if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
+            await self.browser.add_cookie(name='nm_al', value=self.settings['login_cookie'])
+            await self.sleep_()
+            await self.browser.get('https://www.ninjamanager.com/myteam')
+            await self.browser.wait_for_element(5, 'div[class="top-menu__item-icon"]')
+            await self.sleep_()
+            return
+
+        # if a cookie is not present in settings.json, use the username and password
         await self.browser.get('https://www.ninjamanager.com/account/login')
-        account = await util.get_account()
         
         username_field = await self.browser.wait_for_element(5, 'input[id="input-login"]')
         await self.sleep_()
-        await username_field.send_keys(account['username'])
+        await username_field.send_keys(self.settings['username'])
 
         password_field = await self.browser.get_element('input[id="input-password"]')
         await self.sleep_()
-        await password_field.send_keys(account['password'])
+        await password_field.send_keys(self.settings['password'])
 
         submit_button = await self.browser.get_element('input[id="login-nm-button"]')
         await self.sleep_()
@@ -132,13 +141,13 @@ class EdoTensei:
             self.sigs.update_loop_count.emit()
             await self.scrape()
 
-            await self.arena_actions()
-            await self.scrape()
-            await self.cooldown()
+            # await self.arena_actions()
+            # await self.scrape()
+            # await self.cooldown()
 
-            await self.world_actions()
-            await self.scrape()
-            await self.cooldown()
+            # await self.world_actions()
+            # await self.scrape()
+            # await self.cooldown()
             break
 
 
