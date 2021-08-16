@@ -7,8 +7,8 @@
         "sleep_upper": 1200,
         "world_mode": 0,
         "mission_url": "https://www.ninjamanager.com/world/area/snow-country/mission/1",
-        "arena_energy_cap": -1,
-        "arena_remathcesS_only": false,
+        "arena_energy_cap": 0,
+        "arena_rematches_only": false,
         "arena_wins_only": true,
         "item_helper": {},
         "notes": ""
@@ -21,8 +21,8 @@
         "sleep_upper": 1200,
         "world_mode": 0,
         "mission_url": "https://www.ninjamanager.com/world/area/snow-country/mission/1",
-        "arena_energy_cap": -1,
-        "arena_remathcesS_only": false,
+        "arena_energy_cap": 0,
+        "arena_rematches_only": false,
         "arena_wins_only": true,
         "item_helper": {},
         "notes": ""

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1404</width>
-    <height>1089</height>
+    <height>1090</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -985,7 +985,11 @@
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QSpinBox" name="sleep_lower_number"/>
+                   <widget class="QSpinBox" name="sleep_lower_number">
+                    <property name="maximum">
+                     <number>10000</number>
+                    </property>
+                   </widget>
                   </item>
                   <item>
                    <widget class="QLabel" name="label_26">
@@ -998,7 +1002,11 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QSpinBox" name="sleep_upper_number"/>
+                   <widget class="QSpinBox" name="sleep_upper_number">
+                    <property name="maximum">
+                     <number>10000</number>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </widget>
@@ -1116,7 +1124,7 @@
                 </widget>
                </item>
                <item row="11" column="1">
-                <widget class="QCheckBox" name="arena_rematches_checkbox">
+                <widget class="QCheckBox" name="arena_rematches_only_checkbox">
                  <property name="text">
                   <string>yes</string>
                  </property>
@@ -1130,14 +1138,14 @@
                 </widget>
                </item>
                <item row="12" column="1">
-                <widget class="QCheckBox" name="checkBox_2">
+                <widget class="QCheckBox" name="arena_wins_only_checkbox">
                  <property name="text">
                   <string>yes</string>
                  </property>
                 </widget>
                </item>
                <item row="15" column="0" colspan="2">
-                <widget class="QPushButton" name="pushButton">
+                <widget class="QPushButton" name="submit_settings_button">
                  <property name="text">
                   <string>Submit</string>
                  </property>
@@ -1163,7 +1171,7 @@
                 <widget class="QLineEdit" name="world_mission_text"/>
                </item>
                <item row="14" column="0" colspan="2">
-                <widget class="QPushButton" name="pushButton_2">
+                <widget class="QPushButton" name="reset_settings_button">
                  <property name="text">
                   <string>Reset</string>
                  </property>

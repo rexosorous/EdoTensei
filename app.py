@@ -27,22 +27,11 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
         self.setupUi(self)
         self.db = DBHandler.DBHandler(account)
         self.sigs = signals.Signals()
-        self.bot = EdoTensei.EdoTensei(self.db, self.sigs, account)
-        self.connect_events()
+        self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
+        self.account = account
         self.init_labels()
-
-
-
-    def connect_events(self):
-        self.launch_button.clicked.connect(self.launch_or_close)
-        self.start_button.clicked.connect(self.start_or_pause)
-        self.sigs.update_loop_count.connect(self.update_loop_label)
-        self.sigs.update_error_count.connect(self.update_error_label)
-        self.sigs.update_gold.connect(self.update_gold_labels)
-        self.sigs.update_world_stats.connect(self.update_world_labels)
-        self.sigs.update_arena_stats.connect(self.update_arena_labels)
-        self.sigs.update_items_gained.connect(self.update_items_table)
-        self.sigs.add_ninja_card.connect(self.add_ninja_card)
+        self.connect_events()
+        self.load_settings()
 
 
 
@@ -55,6 +44,21 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
         self.world_losses_label.setText('0')
         self.arena_wins_label.setText('0')
         self.arena_losses_label.setText('0')
+
+
+
+    def connect_events(self):
+        self.launch_button.clicked.connect(self.launch_or_close)
+        self.start_button.clicked.connect(self.start_or_pause)
+        self.reset_settings_button.clicked.connect(self.load_settings)
+        self.submit_settings_button.clicked.connect(self.save_settings)
+        self.sigs.update_loop_count.connect(self.update_loop_label)
+        self.sigs.update_error_count.connect(self.update_error_label)
+        self.sigs.update_gold.connect(self.update_gold_labels)
+        self.sigs.update_world_stats.connect(self.update_world_labels)
+        self.sigs.update_arena_stats.connect(self.update_arena_labels)
+        self.sigs.update_items_gained.connect(self.update_items_table)
+        self.sigs.add_ninja_card.connect(self.add_ninja_card)
 
 
 
@@ -82,6 +86,37 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
         elif self.bot.state == EdoTensei.State.PAUSED:
             self.start_button.setIcon(QIcon('./icons/start.png'))
             # self.bot.resume()
+
+
+
+    @qasync.asyncSlot()
+    async def load_settings(self):
+        settings = util.load_settings(self.account)
+        await self.bot.update_settings(settings)
+        self.sleep_lower_number.setValue(settings['sleep_lower'])
+        self.sleep_upper_number.setValue(settings['sleep_upper'])
+        self.world_behavior_combobox.setCurrentIndex(settings['world_mode'])
+        self.world_mission_text.setText(settings['mission_url'])
+        self.arena_energy_cap_number.setValue(settings['arena_energy_cap'])
+        self.arena_rematches_only_checkbox.setCheckState(Qt.Checked) if settings['arena_rematches_only'] else self.arena_rematches_only_checkbox.setCheckState(Qt.Unchecked)
+        self.arena_wins_only_checkbox.setCheckState(Qt.Checked) if settings['arena_wins_only'] else self.arena_wins_only_checkbox.setCheckState(Qt.Unchecked)
+        # self.item_helper
+        self.notes_textbox.setText(settings['notes'])
+
+
+
+    @qasync.asyncSlot()
+    async def save_settings(self):
+        settings = {
+            'sleep_lower': self.sleep_lower_number.value(),
+            'sleep_upper': self.sleep_upper_number.value(),
+            'world_mode': self.world_behavior_combobox.currentIndex(),
+            'mission_url': self.world_mission_text.text(),
+            'arena_energy_cap': self.arena_energy_cap_number.value(),
+            'arena_rematches_only': True if self.arena_rematches_only_checkbox.checkState() == Qt.Checked else False,
+            'arena_wins_only': True if self.arena_wins_only_checkbox.checkState() == Qt.Checked else False
+        }
+        util.save_settings(self.account, settings)
 
 
 

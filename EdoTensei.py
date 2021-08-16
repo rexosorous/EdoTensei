@@ -13,7 +13,6 @@ from PyQt5.QtGui import QPixmap
 
 # local modules
 import asyncio
-import utilities as util
 import gui.ninja_card_frame
 
 
@@ -72,7 +71,7 @@ class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
 
 
 class EdoTensei:
-    def __init__(self, db, sigs, account: str):
+    def __init__(self, db, sigs):
         # arsenic stuff
         self.service = arsenic.services.Chromedriver(binary='./drivers/chromedriver.exe')
         self.driver = arsenic.browsers.Chrome()
@@ -82,8 +81,14 @@ class EdoTensei:
         self.sigs = sigs
         self.ninjas = dict()
         self.state = State.STOPPED
-        self.settings = util.load_settings(account)
+        self.settings = dict()
 
+
+
+    @qasync.asyncSlot(dict)
+    async def update_settings(self, settings: dict):
+        self.settings = settings
+        
 
 
     @qasync.asyncSlot()
@@ -105,7 +110,7 @@ class EdoTensei:
 
 
     @qasync.asyncSlot()
-    async def login(self, account = None):
+    async def login(self):
         # prefer using cookies over login info
         if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
             await self.browser.add_cookie(name='nm_al', value=self.settings['login_cookie'])
@@ -317,7 +322,7 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def world_actions(self):
-        await self.do_world_mission('https://www.ninjamanager.com/world/area/the-sealed-world/mission/2')
+        await self.do_world_mission(self.settings['mission_url'])
 
 
 
@@ -355,7 +360,7 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def cooldown(self):
-        await self.sleep_(self.cooldown_time[0], self.cooldown_time[1])
+        await self.sleep_(self.settings['sleep_lower'], self.settings['sleep_upper'])
 
 
 
