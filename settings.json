@@ -2,6 +2,7 @@
     "chrome": {
         "username": "PUT YOUR LOGIN USERNAME HERE",
         "password": "PUT YOUR LOGIN PASSWORD HERE",
+        "login_cookie": "OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE",
         "sleep_lower": 900,
         "sleep_upper": 1200,
         "world_mode": 0,
@@ -15,6 +16,7 @@
     "firefox": {
         "username": "PUT YOUR LOGIN USERNAME HERE",
         "password": "PUT YOUR LOGIN PASSWORD HERE",
+        "login_cookie": "OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE",
         "sleep_lower": 900,
         "sleep_upper": 1200,
         "world_mode": 0,
