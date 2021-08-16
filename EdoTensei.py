@@ -42,6 +42,8 @@ class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
 
         self.init_labels()
 
+
+
     def init_labels(self):
         self.image.setPixmap(QPixmap(f'./{self.image_dir}'))
         self.ninja_name_label.setText(self.name)
@@ -137,6 +139,7 @@ class EdoTensei:
             await self.world_actions()
             await self.scrape()
             await self.cooldown()
+            break
 
 
 
@@ -261,15 +264,7 @@ class EdoTensei:
             if not rematch: # and self.arena_rematches_only:
                 continue
 
-            await button.click()
-            await self.sleep_(3, 5)
-
-            try:
-                max_challenge_button = await self.browser.get_element('.c-overlay-message__close')
-                await max_challenge_button.click()
-                await self.sleep_(3, 5)
-            except arsenic.errors.NoSuchElement:
-                pass
+            await self.send_arena_challenge(button)
 
         sidebar_challenges = await self.browser.get_elements('.m-sb-challenges__row')        
         for challenge in sidebar_challenges:
@@ -287,15 +282,27 @@ class EdoTensei:
             if not rematch: # and self.arena_rematches_only:
                 continue
 
-            await button.click()
-            await self.sleep_(3, 5)
+            await self.send_arena_challenge(button)
 
-            try:
-                max_challenge_button = await self.browser.get_element('.c-overlay-message__close')
-                await max_challenge_button.click()
-                await self.sleep_(3, 5)
-            except arsenic.errors.NoSuchElement:
-                pass
+
+
+    @qasync.asyncSlot()
+    async def send_arena_challenge(self, button):
+        await button.click()
+        await self.sleep_(3, 5)
+
+        try: # attempt to click the button that pops up if you've reached max challenges against an opponent
+            max_challenge_button = await self.browser.get_element('.c-overlay-message__close')
+            await max_challenge_button.click()
+            await self.sleep_(3, 5)
+        except arsenic.errors.NoSuchElement:
+            # this is expected behavior
+            # check for win or loss
+            sent_challenges_area = await self.browser.get_element('#challenges-outgoing')
+            latest_challenge = await sent_challenges_area.get_element('div')
+            class_attributes = await latest_challenge.get_attribute('class')
+            is_win = True if '-result-win' in class_attributes else False   # the other is -result-loss
+            self.sigs.update_arena_stats.emit(is_win)
 
 
 

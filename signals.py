@@ -6,6 +6,6 @@ class Signals(QObject):
     update_error_count = pyqtSignal()   # not implemented
     update_gold = pyqtSignal(int)
     update_world_stats = pyqtSignal(bool)
-    update_arena_stats = pyqtSignal(bool)   # not implemented
+    update_arena_stats = pyqtSignal(bool)
     update_items_gained = pyqtSignal(str)
     add_ninja_card = pyqtSignal(object)
