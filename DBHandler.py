@@ -61,3 +61,13 @@ class DBHandler:
         elif isinstance(id_or_name, str):
             self.db.execute(f'UPDATE items SET quantity_{self.account}={qty} WHERE name="{id_or_name}"')
         self.conn.commit()
+
+
+
+    def get_craftable_items(self) -> list[int, str]:
+        return self.db.execute(f'SELECT DISTINCT id, name FROM recipes INNER JOIN items ON product_id=id ORDER BY item_type_id DESC').fetchall()
+
+
+
+    def get_item_recipe(self, item_id) -> list[int, str, int, int]:
+        return self.db.execute(f'SELECT id, name, quantity, quantity_{self.account} FROM recipes INNER JOIN items ON ingredient_id=id WHERE product_id={item_id}').fetchall()

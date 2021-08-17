@@ -41,7 +41,7 @@
           </font>
          </property>
          <property name="text">
-          <string>Legendary Weaopns &amp; Bloodlines</string>
+          <string>Craftable Items</string>
          </property>
         </widget>
        </item>
@@ -68,11 +68,6 @@
          <column>
           <property name="text">
            <string>Item</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Recipe</string>
           </property>
          </column>
          <column>
@@ -112,7 +107,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton">
+        <widget class="QPushButton" name="add_button">
          <property name="font">
           <font>
            <pointsize>20</pointsize>
@@ -134,7 +129,7 @@
      <x>0</x>
      <y>0</y>
      <width>970</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

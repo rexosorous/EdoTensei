@@ -1,6 +1,6 @@
 # dependencies
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem, QMenu, QAction
 from PyQt5.QtGui import QIcon, QPixmap, QPalette
 import qasync
 
@@ -16,18 +16,20 @@ import gui.ninja_card_frame
 import EdoTensei
 import signals
 import utilities as util
-import DBHandler
+from DBHandler import DBHandler
+from RecipeWindow import RecipeWindow
 
 
 
-class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
+class MainFrame(QFrame, gui.main_frame.Ui_Frame):
     def __init__(self, account: str):
         # account should be "account_1" or "account_2"
         super().__init__()
         self.setupUi(self)
-        self.db = DBHandler.DBHandler(account)
+        self.db = DBHandler(account)
         self.sigs = signals.Signals()
         self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
+        self.recipe_window = RecipeWindow(self.db, self.sigs)
         self.account = account
         self.init_labels()
         self.connect_events()
@@ -52,6 +54,8 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
         self.start_button.clicked.connect(self.start_or_pause)
         self.reset_settings_button.clicked.connect(self.load_settings)
         self.submit_settings_button.clicked.connect(self.save_settings)
+        self.notes_textbox.textChanged.connect(self.save_notes)
+        self.sigs.set_team_label.connect(self.set_team_label)
         self.sigs.update_loop_count.connect(self.update_loop_label)
         self.sigs.update_error_count.connect(self.update_error_label)
         self.sigs.update_gold.connect(self.update_gold_labels)
@@ -59,6 +63,18 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs.update_arena_stats.connect(self.update_arena_labels)
         self.sigs.update_items_gained.connect(self.update_items_table)
         self.sigs.add_ninja_card.connect(self.add_ninja_card)
+        
+        # maybe move this to it's own class for all the context menu stuff?
+        self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.item_recipe_tree.open_ = QAction("Add Recipes", self.item_recipe_tree)
+        self.item_recipe_tree.remove = QAction("Remove This Recipe", self.item_recipe_tree)
+        self.item_recipe_tree.addAction(self.item_recipe_tree.open_)
+        self.item_recipe_tree.addAction(self.item_recipe_tree.remove)
+        self.item_recipe_tree.open_.triggered.connect(self.open_recipe_window)
+
+    @qasync.asyncSlot()
+    async def open_recipe_window(self):
+        await self.recipe_window.open()
 
 
 
@@ -120,8 +136,14 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-    # updating labels and such
     @qasync.asyncSlot()
+    async def save_notes(self):
+        util.save_notes(self.account, self.notes_textbox.toPlainText())
+
+
+
+    # updating labels and such
+    @qasync.asyncSlot(str)
     async def set_team_label(self, name: str):
         self.team_label.setText(name)
 
@@ -179,7 +201,7 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
             self.items_gained_table.setItem(row, 1, QTableWidgetItem(name))
 
     @qasync.asyncSlot(object)
-    async def add_ninja_card(self, ninja_card: EdoTensei.Ninja_Card):
+    async def add_ninja_card(self, ninja_card: EdoTensei.NinjaCard):
         # note that this only ADDS and will not update existing cards
         self.ninja_info_area.addWidget(ninja_card)
 
@@ -193,18 +215,18 @@ class Main_Frame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-class Main_Window(QMainWindow, gui.main_window.Ui_MainWindow):
+class MainWindow(QMainWindow, gui.main_window.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
         self.init_gui()
 
     def init_gui(self):
-        self.account_1_gui = Main_Frame('account_1')
+        self.account_1_gui = MainFrame('account_1')
         self.account_1_layout = QGridLayout(self.account_1_tab)
         self.account_1_layout.addWidget(self.account_1_gui)
 
-        self.account_2_gui = Main_Frame('account_2')
+        self.account_2_gui = MainFrame('account_2')
         self.account_2_layout = QGridLayout(self.account_2_tab)
         self.account_2_layout.addWidget(self.account_2_gui)
 
@@ -230,7 +252,7 @@ async def main():
     if hasattr(app, "aboutToQuit"):
         getattr(app, "aboutToQuit").connect(functools.partial(close_future, future, loop))
 
-    window = Main_Window()
+    window = MainWindow()
     window.show()
     
     await future

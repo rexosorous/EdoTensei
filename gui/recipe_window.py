@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'recipe_window.ui'
+# Form implementation generated from reading ui file 'gui/recipe_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -67,16 +67,16 @@ class Ui_MainWindow(object):
         item = QtWidgets.QTableWidgetItem()
         self.location_table.setHorizontalHeaderItem(3, item)
         self.verticalLayout_2.addWidget(self.location_table)
-        self.pushButton = QtWidgets.QPushButton(self.frame_2)
+        self.add_button = QtWidgets.QPushButton(self.frame_2)
         font = QtGui.QFont()
         font.setPointSize(20)
-        self.pushButton.setFont(font)
-        self.pushButton.setObjectName("pushButton")
-        self.verticalLayout_2.addWidget(self.pushButton)
+        self.add_button.setFont(font)
+        self.add_button.setObjectName("add_button")
+        self.verticalLayout_2.addWidget(self.add_button)
         self.horizontalLayout.addWidget(self.frame_2)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 970, 26))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 970, 21))
         self.menubar.setObjectName("menubar")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -89,11 +89,10 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.label.setText(_translate("MainWindow", "Legendary Weaopns & Bloodlines"))
+        self.label.setText(_translate("MainWindow", "Craftable Items"))
         self.recipe_tree.headerItem().setText(0, _translate("MainWindow", "Item"))
-        self.recipe_tree.headerItem().setText(1, _translate("MainWindow", "Recipe"))
-        self.recipe_tree.headerItem().setText(2, _translate("MainWindow", "Need"))
-        self.recipe_tree.headerItem().setText(3, _translate("MainWindow", "Have"))
+        self.recipe_tree.headerItem().setText(1, _translate("MainWindow", "Need"))
+        self.recipe_tree.headerItem().setText(2, _translate("MainWindow", "Have"))
         item = self.location_table.horizontalHeaderItem(0)
         item.setText(_translate("MainWindow", "Item"))
         item = self.location_table.horizontalHeaderItem(1)
@@ -102,4 +101,4 @@ class Ui_MainWindow(object):
         item.setText(_translate("MainWindow", "Difficulty"))
         item = self.location_table.horizontalHeaderItem(3)
         item.setText(_translate("MainWindow", "Location"))
-        self.pushButton.setText(_translate("MainWindow", "Add"))
+        self.add_button.setText(_translate("MainWindow", "Add"))

@@ -20,4 +20,13 @@ def save_settings(account: str, settings: dict):
         whole_settings[account][key] = val
 
     with open('settings.json', 'w+') as file:
-        json.dump(whole_settings, file)
+        json.dump(whole_settings, file, indent=4)
+
+def save_notes(account: str, notes: str):
+    with open('settings.json', 'r') as file:
+        whole_settings = json.load(file)
+    
+    whole_settings[account]['notes'] = notes
+
+    with open('settings.json', 'w+') as file:
+        json.dump(whole_settings, file, indent=4)

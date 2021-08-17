@@ -1255,11 +1255,6 @@
                  </column>
                  <column>
                   <property name="text">
-                   <string>Recipe</string>
-                  </property>
-                 </column>
-                 <column>
-                  <property name="text">
                    <string>Need</string>
                   </property>
                  </column>

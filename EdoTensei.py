@@ -24,7 +24,7 @@ class State(Enum):
 
 
 
-class Ninja_Card(QFrame, gui.ninja_card_frame.Ui_Frame):
+class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
     def __init__(self, name: str, image_dir: str, exp: int, BL_name: str, BL_exp: int):
         # big note. changes here don't have to be 'updated' for it to reflect in the gui
         super().__init__()
@@ -111,31 +111,31 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def login(self):
-        # prefer using cookies over login info
         if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
+            # prefer using cookies over login info
             await self.browser.add_cookie(name='nm_al', value=self.settings['login_cookie'])
+        else:
+            # if a cookie is not present in settings.json, use the username and password
+            await self.browser.get('https://www.ninjamanager.com/account/login')
+            
+            username_field = await self.browser.wait_for_element(5, 'input[id="input-login"]')
             await self.sleep_()
-            await self.browser.get('https://www.ninjamanager.com/myteam')
-            await self.browser.wait_for_element(5, 'div[class="top-menu__item-icon"]')
-            await self.sleep_()
-            return
+            await username_field.send_keys(self.settings['username'])
 
-        # if a cookie is not present in settings.json, use the username and password
-        await self.browser.get('https://www.ninjamanager.com/account/login')
+            password_field = await self.browser.get_element('input[id="input-password"]')
+            await self.sleep_()
+            await password_field.send_keys(self.settings['password'])
+
+            submit_button = await self.browser.get_element('input[id="login-nm-button"]')
+            await self.sleep_()
+            await submit_button.click()
         
-        username_field = await self.browser.wait_for_element(5, 'input[id="input-login"]')
         await self.sleep_()
-        await username_field.send_keys(self.settings['username'])
-
-        password_field = await self.browser.get_element('input[id="input-password"]')
-        await self.sleep_()
-        await password_field.send_keys(self.settings['password'])
-
-        submit_button = await self.browser.get_element('input[id="login-nm-button"]')
-        await self.sleep_()
-        await submit_button.click()
-
-        await self.browser.wait_for_element(5, 'div[class="top-menu__item-icon"]')
+        await self.browser.get('https://www.ninjamanager.com/')
+        team_name_area = await self.browser.wait_for_element(5, '.header-team__details-name')
+        team_name_element = await team_name_area.get_element('span')
+        team_name = await team_name_element.get_text()
+        self.sigs.set_team_label.emit(team_name)
         await self.sleep_()
 
 
@@ -227,7 +227,7 @@ class EdoTensei:
                         file.write(urllib.request.urlopen(img_url).read())
 
             if id_ not in self.ninjas:
-                self.ninjas[id_] = Ninja_Card(name, f'images/{img_filename}', ninja_exp, BL_name, BL_exp)
+                self.ninjas[id_] = NinjaCard(name, f'images/{img_filename}', ninja_exp, BL_name, BL_exp)
                 self.sigs.add_ninja_card.emit(self.ninjas[id_])
             else:
                 self.ninjas[id_].update_exp(ninja=ninja_exp, BL=BL_exp)
