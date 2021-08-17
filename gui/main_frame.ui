@@ -1255,12 +1255,17 @@
                  </column>
                  <column>
                   <property name="text">
-                   <string>Need</string>
+                   <string>Qty</string>
                   </property>
                  </column>
                  <column>
                   <property name="text">
                    <string>Have</string>
+                  </property>
+                 </column>
+                 <column>
+                  <property name="text">
+                   <string>Need</string>
                   </property>
                  </column>
                 </widget>

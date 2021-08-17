@@ -1,6 +1,6 @@
 # dependencies
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem, QMenu, QAction
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem, QMenu, QAction, QTreeWidgetItem
 from PyQt5.QtGui import QIcon, QPixmap, QPalette
 import qasync
 
@@ -63,6 +63,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs.update_arena_stats.connect(self.update_arena_labels)
         self.sigs.update_items_gained.connect(self.update_items_table)
         self.sigs.add_ninja_card.connect(self.add_ninja_card)
+        self.sigs.add_to_item_helper.connect(self.add_to_item_helper)
         
         # maybe move this to it's own class for all the context menu stuff?
         self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
@@ -139,6 +140,50 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
     @qasync.asyncSlot()
     async def save_notes(self):
         util.save_notes(self.account, self.notes_textbox.toPlainText())
+
+
+
+    @qasync.asyncSlot(object)
+    async def add_to_item_helper(self, item_recipe):
+        self.item_recipe_tree.addTopLevelItem(item_recipe)
+        self.item_recipe_tree.expandAll()
+        await self.populate_item_location_table()
+
+
+
+    @qasync.asyncSlot()
+    async def populate_item_location_table(self):
+        while self.item_location_table.rowCount():
+            self.item_location_table.removeRow(0)
+
+        for index in range(self.item_recipe_tree.topLevelItemCount()):
+            await self.add_location_entry(self.item_recipe_tree.topLevelItem(index), set())
+
+
+
+    @qasync.asyncSlot(object)
+    async def add_location_entry(self, tree_item: QTreeWidgetItem, already_added: set[str]) -> set[str]:
+        item_name = tree_item.text(0)
+        if item_name in already_added:
+            return {item_name}
+        already_added.add(item_name)
+
+        location_data = self.db.get_item_drops_by_name(item_name)
+        for data in location_data:
+            last_row = self.item_location_table.rowCount()
+            self.item_location_table.insertRow(last_row)
+            # fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
+            self.item_location_table.setItem(last_row, 0, QTableWidgetItem(data[0]))
+            self.item_location_table.setItem(last_row, 1, QTableWidgetItem(f'{data[1]}%'))
+            self.item_location_table.setItem(last_row, 2, QTableWidgetItem(data[2]))
+            self.item_location_table.setItem(last_row, 3, QTableWidgetItem(data[3]))
+
+        for index in range(tree_item.childCount()):
+            already_added.update(await self.add_location_entry(tree_item.child(index), already_added))
+
+        return already_added
+
+        
 
 
 

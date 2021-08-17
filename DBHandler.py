@@ -63,11 +63,23 @@ class DBHandler:
         self.conn.commit()
 
 
+    def get_owned_qty(self, item_id) -> int:
+        return self.db.execute(f'SELECT quantity_{self.account} FROM items WHERE id={item_id}').fetchone()[0]
 
-    def get_craftable_items(self) -> list[int, str]:
+    def get_all_items(self) -> list[set[int, str]]:
+        return self.db.execute(f'SELECT id, name FROM items ORDER BY item_type_id DESC').fetchall()
+
+    def get_craftable_items(self) -> list[set[int, str]]:
         return self.db.execute(f'SELECT DISTINCT id, name FROM recipes INNER JOIN items ON product_id=id ORDER BY item_type_id DESC').fetchall()
 
-
-
-    def get_item_recipe(self, item_id) -> list[int, str, int, int]:
+    def get_item_recipe(self, item_id) -> list[set[int, str, int, int]]:
         return self.db.execute(f'SELECT id, name, quantity, quantity_{self.account} FROM recipes INNER JOIN items ON ingredient_id=id WHERE product_id={item_id}').fetchall()
+
+    def get_item_drops_by_id(self, item_id) -> list[set[str, str, float, str]]:
+        return self.db.execute(f'SELECT items.name, droprate, difficulties.name, location_url FROM drops INNER JOIN items ON item_id=items.id INNER JOIN difficulties ON difficulty_id=difficulties.id WHERE item_id={item_id}').fetchall()
+
+    def get_item_drops_by_name(self, item_id) -> list[set[str, str, float, str]]:
+        return self.db.execute(f'SELECT items.name, droprate, difficulties.name, location_url FROM drops INNER JOIN items ON item_id=items.id INNER JOIN difficulties ON difficulty_id=difficulties.id WHERE items.name="{item_id}"').fetchall()
+
+    def query(self, query_str) -> list[set]:
+        return self.db.execute(query_str).fetchall()
