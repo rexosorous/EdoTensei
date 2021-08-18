@@ -6,11 +6,11 @@
         "sleep_lower": 900,
         "sleep_upper": 1200,
         "world_mode": 0,
-        "mission_url": "https://www.ninjamanager.com/world/area/snow-country/mission/1",
+        "mission_url": "snow-country/mission/1",
         "arena_energy_cap": 0,
         "arena_rematches_only": false,
         "arena_wins_only": true,
-        "item_helper": {},
+        "item_helper": [],
         "notes": ""
     },
     "account_2": {
@@ -20,11 +20,11 @@
         "sleep_lower": 900,
         "sleep_upper": 1200,
         "world_mode": 0,
-        "mission_url": "https://www.ninjamanager.com/world/area/snow-country/mission/1",
+        "mission_url": "snow-country/mission/1",
         "arena_energy_cap": 0,
         "arena_rematches_only": false,
         "arena_wins_only": true,
-        "item_helper": {},
+        "item_helper": [],
         "notes": ""
     }
 }

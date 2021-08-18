@@ -1,6 +1,7 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPalette
 import json
+from signals import Signals
 
 class Colors:
     RED = QPalette()
@@ -11,7 +12,7 @@ def load_settings(account: str) -> dict():
         settings = json.load(file)
     return settings[account]
 
-def save_settings(account: str, settings: dict):
+def save_settings(account: str, settings: dict) -> dict:
     with open('settings.json', 'r') as file:
         whole_settings = json.load(file)
     
@@ -21,6 +22,8 @@ def save_settings(account: str, settings: dict):
 
     with open('settings.json', 'w+') as file:
         json.dump(whole_settings, file, indent=4)
+    
+    return whole_settings
 
 def save_notes(account: str, notes: str):
     with open('settings.json', 'r') as file:

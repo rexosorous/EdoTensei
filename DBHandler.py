@@ -48,9 +48,15 @@ class DBHandler:
 
     def get_item_id(self, name: str) -> int:
         # case sensitive!
-        result = self.db.execute(f'SELECT id FROM items WHERE name={name}').fetchone()
+        result = self.db.execute(f'SELECT id FROM items WHERE name="{name}"').fetchone()
         if not result:
             raise NotFoundError(name)
+        return result[0]
+
+    def get_item_name(self, id_: int) -> str:
+        result = self.db.execute(f'SELECT name FROM items WHERE id={id_}').fetchone()
+        if not result:
+            raise NotFoundError(str(id_))
         return result[0]
 
 

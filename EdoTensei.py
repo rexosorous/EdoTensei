@@ -322,7 +322,10 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def world_actions(self):
-        await self.do_world_mission(self.settings['mission_url'])
+        if 'https:' in self.settings:
+            await self.do_world_mission(self.settings['mission_url'])
+        else:
+            await self.do_world_mission(f'https://www.ninjamanager.com/world/area/{self.settings["mission_url"]}')
 
 
 

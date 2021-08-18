@@ -32,6 +32,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.recipe_window = RecipeWindow(self.db, self.sigs)
         self.account = account
         self.init_labels()
+        self.create_context_menus()
         self.connect_events()
         self.load_settings()
 
@@ -46,6 +47,22 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.world_losses_label.setText('0')
         self.arena_wins_label.setText('0')
         self.arena_losses_label.setText('0')
+
+
+
+    def create_context_menus(self):
+        self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.item_recipe_tree.open_ = QAction("Add Recipes", self.item_recipe_tree)
+        self.item_recipe_tree.remove = QAction("Remove This Recipe", self.item_recipe_tree)
+        self.item_recipe_tree.addAction(self.item_recipe_tree.open_)
+        self.item_recipe_tree.addAction(self.item_recipe_tree.remove)
+        self.item_recipe_tree.open_.triggered.connect(self.open_recipe_window)
+        self.item_recipe_tree.remove.triggered.connect(self.remove_recipe)
+
+        self.item_location_table.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.item_location_table.set_mission = QAction("Set As World Mission", self.item_location_table)
+        self.item_location_table.addAction(self.item_location_table.set_mission)
+        self.item_location_table.set_mission.triggered.connect(self.set_world_mission)
 
 
 
@@ -64,18 +81,6 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs.update_items_gained.connect(self.update_items_table)
         self.sigs.add_ninja_card.connect(self.add_ninja_card)
         self.sigs.add_to_item_helper.connect(self.add_to_item_helper)
-        
-        # maybe move this to it's own class for all the context menu stuff?
-        self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
-        self.item_recipe_tree.open_ = QAction("Add Recipes", self.item_recipe_tree)
-        self.item_recipe_tree.remove = QAction("Remove This Recipe", self.item_recipe_tree)
-        self.item_recipe_tree.addAction(self.item_recipe_tree.open_)
-        self.item_recipe_tree.addAction(self.item_recipe_tree.remove)
-        self.item_recipe_tree.open_.triggered.connect(self.open_recipe_window)
-
-    @qasync.asyncSlot()
-    async def open_recipe_window(self):
-        await self.recipe_window.open()
 
 
 
@@ -117,8 +122,16 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.arena_energy_cap_number.setValue(settings['arena_energy_cap'])
         self.arena_rematches_only_checkbox.setCheckState(Qt.Checked) if settings['arena_rematches_only'] else self.arena_rematches_only_checkbox.setCheckState(Qt.Unchecked)
         self.arena_wins_only_checkbox.setCheckState(Qt.Checked) if settings['arena_wins_only'] else self.arena_wins_only_checkbox.setCheckState(Qt.Unchecked)
-        # self.item_helper
         self.notes_textbox.setText(settings['notes'])
+        for item_id in settings['item_helper']:
+            item_name = self.db.get_item_name(item_id)
+            product_owned_qty = self.db.get_owned_qty(item_id)
+            product_needed_qty = '0' if product_owned_qty else '1' 
+            product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty])
+            await self.build_recipe(product_widget, item_id)
+            self.item_recipe_tree.addTopLevelItem(product_widget)
+        self.item_recipe_tree.expandAll()
+        await self.populate_item_location_table()
 
 
 
@@ -133,7 +146,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
             'arena_rematches_only': True if self.arena_rematches_only_checkbox.checkState() == Qt.Checked else False,
             'arena_wins_only': True if self.arena_wins_only_checkbox.checkState() == Qt.Checked else False
         }
-        util.save_settings(self.account, settings)
+        new_settings = util.save_settings(self.account, settings)
+        await self.bot.update_settings(new_settings)
 
 
 
@@ -143,11 +157,50 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-    @qasync.asyncSlot(object)
-    async def add_to_item_helper(self, item_recipe):
-        self.item_recipe_tree.addTopLevelItem(item_recipe)
+    @qasync.asyncSlot()
+    async def open_recipe_window(self):
+        await self.recipe_window.open()
+
+
+
+    @qasync.asyncSlot(str)
+    async def add_to_item_helper(self, item_name: str):
+        item_id = self.db.get_item_id(item_name)
+        product_owned_qty = self.db.get_owned_qty(item_id)
+        product_needed_qty = '0' if product_owned_qty else '1' 
+        product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty])
+        await self.build_recipe(product_widget, item_id)
+        self.item_recipe_tree.addTopLevelItem(product_widget)
         self.item_recipe_tree.expandAll()
         await self.populate_item_location_table()
+    
+        # save the newly added recipe to settings
+        item_helper_ids = []
+        for index in range(self.item_recipe_tree.topLevelItemCount()):
+            item_name = self.item_recipe_tree.topLevelItem(index).text(0)
+            item_id = self.db.get_item_id(item_name)
+            item_helper_ids.append(item_id)
+        settings = {'item_helper': item_helper_ids}
+        util.save_settings(self.account, settings)
+
+
+
+    @qasync.asyncSlot(object, int)
+    async def build_recipe(self, parent_widget, parent_item_id: int):
+        data = self.db.get_item_recipe(parent_item_id) # should return id, name, qty needed to craft, qty owned
+        if not data:
+            return
+        
+        for ingredient in data:
+            parent_needed_qty = int(parent_widget.text(3))
+            craft_qty = ingredient[2]
+            owned_qty = ingredient[3]
+            needed_qty = (parent_needed_qty * craft_qty) - owned_qty
+            if needed_qty < 0:
+                needed_qty = 0
+            child = QTreeWidgetItem(parent_widget, [str(x) for x in ingredient[1:]])
+            child.setText(3, str(needed_qty))
+            await self.build_recipe(child, ingredient[0])
 
 
 
@@ -172,16 +225,49 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         for data in location_data:
             last_row = self.item_location_table.rowCount()
             self.item_location_table.insertRow(last_row)
-            # fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
+            fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
             self.item_location_table.setItem(last_row, 0, QTableWidgetItem(data[0]))
             self.item_location_table.setItem(last_row, 1, QTableWidgetItem(f'{data[1]}%'))
             self.item_location_table.setItem(last_row, 2, QTableWidgetItem(data[2]))
-            self.item_location_table.setItem(last_row, 3, QTableWidgetItem(data[3]))
+            self.item_location_table.setItem(last_row, 3, QTableWidgetItem(fixed_location))
 
         for index in range(tree_item.childCount()):
             already_added.update(await self.add_location_entry(tree_item.child(index), already_added))
 
         return already_added
+
+
+    
+    @qasync.asyncSlot()
+    async def remove_recipe(self):
+        selected_item = self.item_recipe_tree.currentItem()
+        # get the top level item
+        while selected_item.parent():
+            selected_item = selected_item.parent()
+        selected_item_index = self.item_recipe_tree.indexOfTopLevelItem(selected_item)
+        self.item_recipe_tree.takeTopLevelItem(selected_item_index)
+        await self.populate_item_location_table()
+
+        # save to settings
+        item_helper_ids = []
+        for index in range(self.item_recipe_tree.topLevelItemCount()):
+            item_name = self.item_recipe_tree.topLevelItem(index).text(0)
+            item_id = self.db.get_item_id(item_name)
+            item_helper_ids.append(item_id)
+        settings = {'item_helper': item_helper_ids}
+        util.save_settings(self.account, settings)
+
+
+
+    @qasync.asyncSlot()
+    async def set_world_mission(self):
+        # this should also probably change the world behavior mode to manual whenever i implement those features
+        row = self.item_location_table.currentRow()
+        url = self.item_location_table.item(row, 3).text()
+        self.world_mission_text.setText(url)
+        new_settings = util.save_settings(self.account, {'mission_url': url})
+        self.bot.update_settings(new_settings)
+
 
         
 

@@ -121,7 +121,7 @@ class RecipeWindow(QMainWindow, gui.recipe_window.Ui_MainWindow):
         self.recipe_tree.clear()
         product_owned_qty = self.db.get_owned_qty(item_id)
         product_needed_qty = '0' if product_owned_qty else '1' 
-        product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty]) # come back to this and fully fill out all fields
+        product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty])
         all_item_ids = await self.build_recipe(product_widget, item_id)
         all_item_ids.add(item_id)
         self.recipe_tree.addTopLevelItem(product_widget)
@@ -161,14 +161,14 @@ class RecipeWindow(QMainWindow, gui.recipe_window.Ui_MainWindow):
             for data in self.db.get_item_drops_by_id(item_id):
                 last_row = self.location_table.rowCount()
                 self.location_table.insertRow(last_row)
-                # fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
+                fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
                 self.location_table.setItem(last_row, 0, QTableWidgetItem(data[0]))
                 self.location_table.setItem(last_row, 1, QTableWidgetItem(f'{data[1]}%'))
                 self.location_table.setItem(last_row, 2, QTableWidgetItem(data[2]))
-                self.location_table.setItem(last_row, 3, QTableWidgetItem(data[3]))
+                self.location_table.setItem(last_row, 3, QTableWidgetItem(fixed_location))
 
 
 
     @qasync.asyncSlot()
     async def add_to_item_helper(self):
-        self.sigs.add_to_item_helper.emit(self.recipe_tree.takeTopLevelItem(0))
+        self.sigs.add_to_item_helper.emit(self.recipe_tree.topLevelItem(0).text(0))
