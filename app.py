@@ -1,15 +1,17 @@
-# dependencies
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem, QMenu, QAction, QTreeWidgetItem
-from PyQt5.QtGui import QIcon, QPixmap, QPalette
-import qasync
-
+# standard python modules
 import sys
 import asyncio
 import functools
 import logging
 import structlog
 
+# dependencies
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMainWindow, QFrame, QGridLayout, QTableWidgetItem, QAction, QTreeWidgetItem
+from PyQt5.QtGui import QIcon
+import qasync
+
+# local modules
 import gui.main_window
 import gui.main_frame
 import gui.ninja_card_frame
@@ -22,15 +24,28 @@ from RecipeWindow import RecipeWindow
 
 
 class MainFrame(QFrame, gui.main_frame.Ui_Frame):
+    '''
+    The GUI and logic for the QFrames that control browser activity
+    Each instance of this should control and interact with only 1 browser driver instance and only 1 account
+
+    Args:
+        account (str): should either be 'account_1' or 'account_2'. determines which account this instance is tied to
+
+    Attributes:
+        account (str)
+        db (DBHandler)
+        sigs (Signals)
+        bot (EdoTensei)
+        recipe_window (RecipeWindow)
+    '''
     def __init__(self, account: str):
-        # account should be "account_1" or "account_2"
         super().__init__()
         self.setupUi(self)
+        self.account = account
         self.db = DBHandler(account)
         self.sigs = signals.Signals()
         self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
         self.recipe_window = RecipeWindow(self.db, self.sigs)
-        self.account = account
         self.init_labels()
         self.create_context_menus()
         self.connect_events()
@@ -39,6 +54,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
     def init_labels(self):
+        '''
+        Initializes all the labels under Summary except for team_label and gold_gained_label
+        This doesn't really need to be executed
+        '''
         self.loop_count_label.setText('0')
         self.error_count_label.setText('0')
         self.gold_current_label.setText('0')
@@ -51,6 +70,9 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
     def create_context_menus(self):
+        '''
+        Creates all the right-click context menus
+        '''
         self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.item_recipe_tree.open_ = QAction("Add Recipes", self.item_recipe_tree)
         self.item_recipe_tree.remove = QAction("Remove This Recipe", self.item_recipe_tree)
@@ -67,6 +89,12 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
     def connect_events(self):
+        '''
+        Connects all the button clicks, signals, and other events to functions
+        
+        Note:
+            Does not include events created in self.create_context_menus()
+        '''
         self.launch_button.clicked.connect(self.launch_or_close)
         self.start_button.clicked.connect(self.start_or_pause)
         self.reset_settings_button.clicked.connect(self.load_settings)
@@ -86,6 +114,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def launch_or_close(self):
+        '''
+        Either starts the bot's logic sequence or shuts the bot down
+        Also changes the icons and status to match
+        '''
         if self.bot.state == EdoTensei.State.STOPPED:
             self.launch_button.setIcon(QIcon('./icons/stop.png'))
             self.start_button.setIcon(QIcon('./icons/pause.png'))
@@ -101,6 +133,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def start_or_pause(self):
+        '''
+        Either pauses the bot's main loop or continues it
+        Also changes the icons and status to match
+        '''
         if self.bot.state == EdoTensei.State.RUNNING:
             self.start_button.setIcon(QIcon('./icons/pause.png'))
             self.status_info_label.setText('manually paused')
@@ -113,6 +149,9 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def load_settings(self):
+        '''
+        Opens up settings.json and changes the various UI elements to match
+        '''
         settings = util.load_settings(self.account)
         await self.bot.update_settings(settings)
         self.sleep_lower_number.setValue(settings['sleep_lower'])
@@ -137,6 +176,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def save_settings(self):
+        '''
+        Opens up settings.json and saves any settings that may have been changed
+        Called ONLY when self.submit_settings_button is clicked
+        '''
         settings = {
             'sleep_lower': self.sleep_lower_number.value(),
             'sleep_upper': self.sleep_upper_number.value(),
@@ -153,18 +196,38 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def save_notes(self):
-        util.save_notes(self.account, self.notes_textbox.toPlainText())
+        '''
+        Saves only the notes portion of settings.json whenever a user types in self.notes_textbox
+        This is separate from self.save_settings() because if the user accidentally makes changes to the settings UI
+        and then types in the notes textbox, it'll save their settings changes even though they didn ot press the submit button
+        '''
+        util.save_settings(self.account, {'notes': self.notes_textbox.toPlainText()})
 
 
 
     @qasync.asyncSlot()
     async def open_recipe_window(self):
+        '''
+        Opens an instance of RecipeWindow which is used to add recipes to the item helper
+        Called when a user right clicks in self.item_recipe_tree and clicks "Add Recipes"
+        '''
         await self.recipe_window.open()
 
 
 
     @qasync.asyncSlot(str)
     async def add_to_item_helper(self, item_name: str):
+        '''
+        Adds a product item (the item the user wants to craft/find) to self.item_recipe_tree
+        If the item is crafted, this will create a tree with the full recipe
+
+        Note:
+            This is a pretty sloppy implementation that shares a lot of the same code as RecipeWindow.py
+            I should come back to this and pretty it up
+
+        Args:
+            item_name (str)
+        '''
         item_id = self.db.get_item_id(item_name)
         product_owned_qty = self.db.get_owned_qty(item_id)
         product_needed_qty = '0' if product_owned_qty else '1' 
@@ -186,7 +249,14 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
     @qasync.asyncSlot(object, int)
-    async def build_recipe(self, parent_widget, parent_item_id: int):
+    async def build_recipe(self, parent_widget: QTreeWidgetItem, parent_item_id: int):
+        '''
+        A recursive function to build the full recipe of a product item (the item the user wants to craft)
+
+        Args:
+            parent_widget (QTreeWidgetItem)
+            parent_item_id (int)
+        '''
         data = self.db.get_item_recipe(parent_item_id) # should return id, name, qty needed to craft, qty owned
         if not data:
             return
@@ -206,6 +276,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def populate_item_location_table(self):
+        '''
+        Populates self.item_location_table with items that are in self.item_recipe_tree
+        '''
+        # completely clear the table first
         while self.item_location_table.rowCount():
             self.item_location_table.removeRow(0)
 
@@ -216,6 +290,19 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot(object)
     async def add_location_entry(self, tree_item: QTreeWidgetItem, already_added: set[str]) -> set[str]:
+        '''
+        A recursive function to find all the recipe items of a product item, gather their location data,
+        and then populate self.item_recipe_tree with the acquired location data
+
+        Note:
+            Avoids inserting duplicate entries, but ONLY for duplicate items found in the same product item's recipe
+            So if there are two product items that both use Azoth, then there will be duplicate Azoth location entries
+            Come back and fix this!
+
+        Args:
+            tree_item (QTreeWidgetItem): the current item (cursor) being processed
+            already_added (set[str]): a set of items already processed. used to avoid duplicates
+        '''
         item_name = tree_item.text(0)
         if item_name in already_added:
             return {item_name}
@@ -240,6 +327,10 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
     
     @qasync.asyncSlot()
     async def remove_recipe(self):
+        '''
+        Removes a product item and its recipe from self.item_recipe_tree
+        Called when a user right clicks in self.item_recipe_tree and chooses "Remove This Recipe"
+        '''
         selected_item = self.item_recipe_tree.currentItem()
         # get the top level item
         while selected_item.parent():
@@ -261,19 +352,27 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
     @qasync.asyncSlot()
     async def set_world_mission(self):
+        '''
+        Sets the world mission to the selected item in self.item_location_table
+        Called when the user right clicks in self.item_location_table and clicks "Set As World Mission"
+        '''
         # this should also probably change the world behavior mode to manual whenever i implement those features
         row = self.item_location_table.currentRow()
         url = self.item_location_table.item(row, 3).text()
         self.world_mission_text.setText(url)
         new_settings = util.save_settings(self.account, {'mission_url': url})
-        self.bot.update_settings(new_settings)
+        await self.bot.update_settings(new_settings)
 
 
         
 
 
 
-    # updating labels and such
+    ######################################################################################################################################
+    # small simple functions to change various labels in the UI
+    # most of these are only called by EdoTensei via signal
+    ######################################################################################################################################
+
     @qasync.asyncSlot(str)
     async def set_team_label(self, name: str):
         self.team_label.setText(name)
@@ -347,12 +446,20 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
 class MainWindow(QMainWindow, gui.main_window.Ui_MainWindow):
+    '''
+    The main window that has a QTabWidget which then has instances of MainFrame of type QFrame
+    Basically, each browser UI is a QFrame which then gets placed into this QMainWindow
+    As such, this doesn't have that much logic in it, most of the logci will be held in the MainFrames
+    '''
     def __init__(self):
         super().__init__()
         self.setupUi(self)
         self.init_gui()
 
     def init_gui(self):
+        '''
+        Creates the MainFrame instances for each account and then adds them to the appropriate tab
+        '''
         self.account_1_gui = MainFrame('account_1')
         self.account_1_layout = QGridLayout(self.account_1_tab)
         self.account_1_layout.addWidget(self.account_1_gui)
@@ -363,6 +470,13 @@ class MainWindow(QMainWindow, gui.main_window.Ui_MainWindow):
 
     @qasync.asyncClose
     async def closeEvent(self, event):
+        '''
+        Gracefully shuts down both bots
+        This is a feature of qasync that triggers whenever the program is closed
+        
+        Args:
+            event (PyQt5.QtGui.QCloseEvent)
+        '''
         await self.account_1_gui.bot.shutdown()
         await self.account_2_gui.bot.shutdown()
 
@@ -372,6 +486,9 @@ class MainWindow(QMainWindow, gui.main_window.Ui_MainWindow):
 
 
 async def main():
+    '''
+    required by qasync
+    '''
     def close_future(future, loop):
         loop.call_later(10, future.cancel)
         future.cancel()
@@ -392,7 +509,9 @@ async def main():
 
 
 def suppress_logs():
-    # this suppresses the excessive amount of logs printed to console/stdout
+    '''
+    this suppresses the excessive amount of logs printed to console/stdout by arsenic
+    '''
     logger = logging.getLogger('arsenic')
     def logger_factory():
         return logger

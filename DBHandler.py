@@ -1,8 +1,18 @@
+# standard python modules
 import sqlite3
 
 
 
 class NotFoundError(Exception):
+    '''
+    Raised if the DB doesn't find entries with the specified item name or id
+
+    Args:
+        item_name (str): can also be item id
+
+    Attributes:
+        item_name (str)
+    '''
     def __init__(self, item_name):
         super().__init__()
         self.item_name = item_name
@@ -11,23 +21,42 @@ class NotFoundError(Exception):
 
 
 class DBHandler:
-    def __init__(self, account: str = 'account_1'):
-        # account should either be 'account_1' or 'account_2
+    '''
+    Handles all the DB interactions with specificity to a certain account
+    This only really matters for deciding to pull data from items.quantity_account_1 or items.quantity_account_2
+
+    Args:
+        account (str): should either be 'account_1' or 'account_2'
+
+    Attributes:
+        account (str)
+        conn (sqlite3.Connection)
+        db (sqlite3.Cursor)
+    '''
+    def __init__(self, account: str):
+        self.account = account
         self.conn = sqlite3.connect('forge.db')
         self.db = self.conn.cursor()
-        self.account = account
+
+        # these should only be called when generating a COMPLETELY NEW/FRESH DB
         # self.create_tables()
         # self.populate_tables()
 
     def create_tables(self):
+        '''
+        Creates tables for a NEW/FRESH DB
+        '''
         self.db.execute('CREATE TABLE IF NOT EXISTS item_types (id INTEGER, name TEXT)')
         self.db.execute('CREATE TABLE IF NOT EXISTS difficulties (id INTEGER, name TEXT)')
-        self.db.execute('CREATE TABLE IF NOT EXISTS items (id INTEGER, name TEXT, item_type_id INTEGER, quantity_1 INTEGER, quantity_2 INTEGER)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS items (id INTEGER, name TEXT, item_type_id INTEGER, quantity_account_1 INTEGER, quantity_account_2 INTEGER)')
         self.db.execute('CREATE TABLE IF NOT EXISTS drops (item_id INTEGER, location_url TEXT, droprate REAL, difficulty_id INTEGER)')
         self.db.execute('CREATE TABLE IF NOT EXISTS recipes (product_id INTEGER, ingredient_id INTEGER, quantity INTEGER)')
         self.conn.commit()
 
     def populate_tables(self):
+        '''
+        Populates specific tables with constant data
+        '''
         self.db.execute('INSERT INTO item_types VALUES (0, "material")')
         self.db.execute('INSERT INTO item_types VALUES (1, "equipment")')
         self.db.execute('INSERT INTO item_types VALUES (2, "bloodline")')
@@ -67,6 +96,7 @@ class DBHandler:
         elif isinstance(id_or_name, str):
             self.db.execute(f'UPDATE items SET quantity_{self.account}={qty} WHERE name="{id_or_name}"')
         self.conn.commit()
+
 
 
     def get_owned_qty(self, item_id) -> int:

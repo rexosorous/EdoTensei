@@ -1,10 +1,11 @@
 # standard python modules
 from random import uniform
 import urllib.request
-import os
+from os import listdir
 from enum import Enum
+from asyncio import sleep
 
-#dependencies
+# dependencies
 import arsenic
 from bs4 import BeautifulSoup
 import qasync
@@ -12,7 +13,6 @@ from PyQt5.QtWidgets import QFrame
 from PyQt5.QtGui import QPixmap
 
 # local modules
-import asyncio
 import gui.ninja_card_frame
 
 
@@ -25,8 +25,32 @@ class State(Enum):
 
 
 class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
+    '''
+    GUI cards used to represent ninja info
+
+    Note:
+        all instances of exp in args and attr are % values that have lvl included
+        EX: lvl 5 @ 30% == 530% == 530
+    
+    Args:
+        name (str)
+        image_dir (str)
+        exp (int)
+        BL_name (str)
+        BL_exp (int)
+    
+    Attributes:
+        name (str)
+        image_dir (str)
+        ninja_exp_start (int)
+        ninja_exp_curr (int)
+        ninja_exp_gain (int)
+        BL_name (str)
+        BL_exp_start (int)
+        BL_exp_curr (int)
+        BL_exp_gain (int)
+    '''
     def __init__(self, name: str, image_dir: str, exp: int, BL_name: str, BL_exp: int):
-        # big note. changes here don't have to be 'updated' for it to reflect in the gui
         super().__init__()
         self.setupUi(self)
         self.name = name
@@ -41,8 +65,6 @@ class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
 
         self.init_labels()
 
-
-
     def init_labels(self):
         self.image.setPixmap(QPixmap(f'./{self.image_dir}'))
         self.ninja_name_label.setText(self.name)
@@ -51,7 +73,6 @@ class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
         self.bl_name_label.setText(self.BL_name)
         self.bl_exp_curr_label.setText(f'Lv.{int(self.BL_exp_curr/100)}@{self.BL_exp_curr%100}%')
         self.bl_exp_gain_label.setText(f'+{self.BL_exp_gain}%')
-
 
     def update_exp(self, ninja: int, BL: int):
         self.ninja_exp_curr = ninja
@@ -71,6 +92,28 @@ class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
 
 
 class EdoTensei:
+    '''
+    The webdriver bot. An instance of this should be created for each account.
+
+    Notes:
+        Only uses chromedriver
+        Ideally, I would have made this work independently of PyQt and the rest of the app,
+        but the integration is needed because of qasync and the use of signals
+
+    Args:
+        db (DBHandler)
+        sigs (Signals)
+
+    Attributes:
+        service (arsenic.services.Chromedriver): required by arsenic, but should not be interacted with directly
+        driver (arsenic.browser.Chrome): required by arsenic, but should not be interacted with directly
+        browser (arsenic.session): this is what i should use to interact with the browser/webdriver
+        db (DBHandler)
+        sigs (Signals)
+        ninjas (dict): ninja cards
+        state (Enum): the current state the bot is in
+        settings (dict)
+    '''
     def __init__(self, db, sigs):
         # arsenic stuff
         self.service = arsenic.services.Chromedriver(binary='./drivers/chromedriver.exe')
@@ -93,6 +136,9 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def run(self):
+        '''
+        Starts the bot's main logic
+        '''
         self.state = State.RUNNING
         self.browser = await arsenic.start_session(self.service, self.driver)
         await self.set_cookies()
@@ -111,6 +157,9 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def login(self):
+        '''
+        Logs in. Prefers using cookies if provided in settings, but will also work with username and password
+        '''
         if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
             # prefer using cookies over login info
             await self.browser.add_cookie(name='nm_al', value=self.settings['login_cookie'])
@@ -166,6 +215,7 @@ class EdoTensei:
         await self.gather_forge_data()
         await self.sleep_()
         await self.browser.get('https://www.ninjamanager.com')
+        await self.sleep_()
 
 
 
@@ -222,7 +272,7 @@ class EdoTensei:
                 BL_exp = 0
             
 
-            if img_filename not in os.listdir('images'):
+            if img_filename not in listdir('images'):
                 with open(f'images/{img_filename}', 'wb+') as file:
                         file.write(urllib.request.urlopen(img_url).read())
 
@@ -370,7 +420,7 @@ class EdoTensei:
     @qasync.asyncSlot()
     async def sleep_(self, min: int = 5, max: int = 8):
         # sleeps for a random amount of time between min and max
-        await asyncio.sleep(uniform(min, max))
+        await sleep(uniform(min, max))
 
 
 
