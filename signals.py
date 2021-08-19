@@ -18,4 +18,4 @@ class Signals(QObject):
     update_arena_stats = pyqtSignal(bool)
     update_items_gained = pyqtSignal(str)
     add_ninja_card = pyqtSignal(object)
-    add_to_item_helper = pyqtSignal(str)
+    add_to_item_helper = pyqtSignal(int)

@@ -20,6 +20,7 @@ import signals
 import utilities as util
 from DBHandler import DBHandler
 from RecipeWindow import RecipeWindow
+import CustomPyQt
 
 
 
@@ -46,6 +47,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs = signals.Signals()
         self.bot = EdoTensei.EdoTensei(self.db, self.sigs)
         self.recipe_window = RecipeWindow(self.db, self.sigs)
+        self.item_recipe_tree = CustomPyQt.Tree(self.item_recipe_tree)
         self.init_labels()
         self.create_context_menus()
         self.connect_events()
@@ -73,18 +75,11 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         '''
         Creates all the right-click context menus
         '''
-        self.item_recipe_tree.setContextMenuPolicy(Qt.ActionsContextMenu)
-        self.item_recipe_tree.open_ = QAction("Add Recipes", self.item_recipe_tree)
-        self.item_recipe_tree.remove = QAction("Remove This Recipe", self.item_recipe_tree)
-        self.item_recipe_tree.addAction(self.item_recipe_tree.open_)
-        self.item_recipe_tree.addAction(self.item_recipe_tree.remove)
-        self.item_recipe_tree.open_.triggered.connect(self.open_recipe_window)
-        self.item_recipe_tree.remove.triggered.connect(self.remove_recipe)
-
         self.item_location_table.setContextMenuPolicy(Qt.ActionsContextMenu)
         self.item_location_table.set_mission = QAction("Set As World Mission", self.item_location_table)
         self.item_location_table.addAction(self.item_location_table.set_mission)
         self.item_location_table.set_mission.triggered.connect(self.set_world_mission)
+        self.item_recipe_tree.create_context_menu()
 
 
 
@@ -109,6 +104,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs.update_items_gained.connect(self.update_items_table)
         self.sigs.add_ninja_card.connect(self.add_ninja_card)
         self.sigs.add_to_item_helper.connect(self.add_to_item_helper)
+        self.item_recipe_tree.open_action.triggered.connect(self.open_recipe_window)
+        self.item_recipe_tree.remove_action.triggered.connect(self.remove_recipe)
 
 
 
@@ -163,14 +160,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.arena_wins_only_checkbox.setCheckState(Qt.Checked) if settings['arena_wins_only'] else self.arena_wins_only_checkbox.setCheckState(Qt.Unchecked)
         self.notes_textbox.setText(settings['notes'])
         for item_id in settings['item_helper']:
-            item_name = self.db.get_item_name(item_id)
-            product_owned_qty = self.db.get_owned_qty(item_id)
-            product_needed_qty = '0' if product_owned_qty else '1' 
-            product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty])
-            await self.build_recipe(product_widget, item_id)
-            self.item_recipe_tree.addTopLevelItem(product_widget)
-        self.item_recipe_tree.expandAll()
-        await self.populate_item_location_table()
+            self.item_recipe_tree.add_product(item_id, self.db)
+        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
 
 
 
@@ -215,8 +206,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
 
 
 
-    @qasync.asyncSlot(str)
-    async def add_to_item_helper(self, item_name: str):
+    @qasync.asyncSlot(int)
+    async def add_to_item_helper(self, item_id: int):
         '''
         Adds a product item (the item the user wants to craft/find) to self.item_recipe_tree
         If the item is crafted, this will create a tree with the full recipe
@@ -226,126 +217,37 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
             I should come back to this and pretty it up
 
         Args:
-            item_name (str)
+            item_id (int)
         '''
-        item_id = self.db.get_item_id(item_name)
-        product_owned_qty = self.db.get_owned_qty(item_id)
-        product_needed_qty = '0' if product_owned_qty else '1' 
-        product_widget = QTreeWidgetItem([item_name, '1', str(product_owned_qty), product_needed_qty])
-        await self.build_recipe(product_widget, item_id)
-        self.item_recipe_tree.addTopLevelItem(product_widget)
-        self.item_recipe_tree.expandAll()
-        await self.populate_item_location_table()
+        self.item_recipe_tree.add_product(item_id, self.db)
+        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
     
         # save the newly added recipe to settings
-        item_helper_ids = []
-        for index in range(self.item_recipe_tree.topLevelItemCount()):
-            item_name = self.item_recipe_tree.topLevelItem(index).text(0)
-            item_id = self.db.get_item_id(item_name)
-            item_helper_ids.append(item_id)
-        settings = {'item_helper': item_helper_ids}
+        settings = {'item_helper': self.item_recipe_tree.get_product_ids()}
         util.save_settings(self.account, settings)
 
 
 
-    @qasync.asyncSlot(object, int)
-    async def build_recipe(self, parent_widget: QTreeWidgetItem, parent_item_id: int):
-        '''
-        A recursive function to build the full recipe of a product item (the item the user wants to craft)
-
-        Args:
-            parent_widget (QTreeWidgetItem)
-            parent_item_id (int)
-        '''
-        data = self.db.get_item_recipe(parent_item_id) # should return id, name, qty needed to craft, qty owned
-        if not data:
-            return
-        
-        for ingredient in data:
-            parent_needed_qty = int(parent_widget.text(3))
-            craft_qty = ingredient[2]
-            owned_qty = ingredient[3]
-            needed_qty = (parent_needed_qty * craft_qty) - owned_qty
-            if needed_qty < 0:
-                needed_qty = 0
-            child = QTreeWidgetItem(parent_widget, [str(x) for x in ingredient[1:]])
-            child.setText(3, str(needed_qty))
-            await self.build_recipe(child, ingredient[0])
-
-
-
     @qasync.asyncSlot()
-    async def populate_item_location_table(self):
+    async def populate_item_location_table(self, item_ids: set[int]):
         '''
         Populates self.item_location_table with items that are in self.item_recipe_tree
         '''
-        # completely clear the table first
-        while self.item_location_table.rowCount():
-            self.item_location_table.removeRow(0)
-
-        for index in range(self.item_recipe_tree.topLevelItemCount()):
-            await self.add_location_entry(self.item_recipe_tree.topLevelItem(index), set())
+        CustomPyQt.populate_drop_table(self.item_location_table, self.db, item_ids)
 
 
 
-    @qasync.asyncSlot(object)
-    async def add_location_entry(self, tree_item: QTreeWidgetItem, already_added: set[str]) -> set[str]:
-        '''
-        A recursive function to find all the recipe items of a product item, gather their location data,
-        and then populate self.item_recipe_tree with the acquired location data
-
-        Note:
-            Avoids inserting duplicate entries, but ONLY for duplicate items found in the same product item's recipe
-            So if there are two product items that both use Azoth, then there will be duplicate Azoth location entries
-            Come back and fix this!
-
-        Args:
-            tree_item (QTreeWidgetItem): the current item (cursor) being processed
-            already_added (set[str]): a set of items already processed. used to avoid duplicates
-        '''
-        item_name = tree_item.text(0)
-        if item_name in already_added:
-            return {item_name}
-        already_added.add(item_name)
-
-        location_data = self.db.get_item_drops_by_name(item_name)
-        for data in location_data:
-            last_row = self.item_location_table.rowCount()
-            self.item_location_table.insertRow(last_row)
-            fixed_location = data[3][data[3].find('area/')+5:] if 'area' in data[3] else data[3]
-            self.item_location_table.setItem(last_row, 0, QTableWidgetItem(data[0]))
-            self.item_location_table.setItem(last_row, 1, QTableWidgetItem(f'{data[1]}%'))
-            self.item_location_table.setItem(last_row, 2, QTableWidgetItem(data[2]))
-            self.item_location_table.setItem(last_row, 3, QTableWidgetItem(fixed_location))
-
-        for index in range(tree_item.childCount()):
-            already_added.update(await self.add_location_entry(tree_item.child(index), already_added))
-
-        return already_added
-
-
-    
     @qasync.asyncSlot()
     async def remove_recipe(self):
         '''
         Removes a product item and its recipe from self.item_recipe_tree
         Called when a user right clicks in self.item_recipe_tree and chooses "Remove This Recipe"
         '''
-        selected_item = self.item_recipe_tree.currentItem()
-        # get the top level item
-        while selected_item.parent():
-            selected_item = selected_item.parent()
-        selected_item_index = self.item_recipe_tree.indexOfTopLevelItem(selected_item)
-        self.item_recipe_tree.takeTopLevelItem(selected_item_index)
-        await self.populate_item_location_table()
+        self.item_recipe_tree.remove_recipe()
+        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
 
         # save to settings
-        item_helper_ids = []
-        for index in range(self.item_recipe_tree.topLevelItemCount()):
-            item_name = self.item_recipe_tree.topLevelItem(index).text(0)
-            item_id = self.db.get_item_id(item_name)
-            item_helper_ids.append(item_id)
-        settings = {'item_helper': item_helper_ids}
+        settings = {'item_helper': self.item_recipe_tree.get_product_ids()}
         util.save_settings(self.account, settings)
 
 
