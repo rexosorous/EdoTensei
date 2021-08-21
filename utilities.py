@@ -56,4 +56,4 @@ def save_settings(account: str, settings: dict) -> dict:
     with open('settings.json', 'w+') as file:
         json.dump(whole_settings, file, indent=4)
     
-    return whole_settings
+    return whole_settings[account]

@@ -193,9 +193,9 @@ class EdoTensei:
     async def loop(self):
         while True:
             self.sigs.update_loop_count.emit()
-            await self.scrape()
+            # await self.scrape()
 
-            # await self.arena_actions()
+            await self.arena_actions()
             # await self.scrape()
             # await self.cooldown()
 
@@ -311,7 +311,12 @@ class EdoTensei:
         our_rating_ele = await our_rating_ele_outer.get_element('span')
         our_rating_str = await our_rating_ele.get_text()
         our_rating = int(our_rating_str.replace(',', ''))
-        
+
+        # instead of challenging as we traverse, we will collect the team's rating, rematch (bool), and button to make it easier to handle
+        # doing it this way will allow us to sort all the challenges in one master list and order it however we like
+
+        teams = list()      # list[dict[int, bool, arsenic.session.Element]]
+            
         main_challenges = await self.browser.get_elements('.c-arena-box')
         for challenge in main_challenges:
             button = await challenge.get_element('.c-arena-box__challenge')
@@ -322,57 +327,83 @@ class EdoTensei:
             rematch_str = await rematch_ele.get_text()
             rematch = False if rematch_str.lower() == 'fight' else True
 
-            # if rating > our_rating and self.arena_wins_only:
-                # continue
+            teams.append({
+                'rating': rating,
+                'rematch': rematch,
+                'button': button
+            })
+
+
+        # this proves challenging because it's not possible to get a team's rating from the sidebar
+        # technically you can by scraping that team's url, visiting their team link, and then scraping for their rating, but that doesn't seem ideal
+        # hopefully we can just rely on main_challenges area
+        # sidebar_challenges = await self.browser.get_elements('.m-sb-challenges__row')        
+        # for challenge in sidebar_challenges:
+        #     # this is smart enough to 'know' when icons change
+        #     button = await challenge.get_element('.m-sb-challenges__challenge')
+        #     rating_ele = await challenge.get_element('.m-sb-challenges__rating')
+        #     rating_str = await rating_ele.get_attribute('class')
+        #     rating = True if '-result-win' in rating_str else False     # the other is -result-loss
+        #     rematch_str = await button.get_attribute('class')
+        #     rematch = True if '-icon-challenge-return' in rematch_str else False
+
+        #     teams.append({'rating': rating})
+
+            # if self.settings['arena_wins_only'] and rating > our_rating:
+            #     continue
             
-            if not rematch: # and self.arena_rematches_only:
-                continue
-
-            await self.send_arena_challenge(button)
-
-        sidebar_challenges = await self.browser.get_elements('.m-sb-challenges__row')        
-        for challenge in sidebar_challenges:
-            # this is smart enough to 'know' when icons change
-            button = await challenge.get_element('.m-sb-challenges__challenge')
-            rating_ele = await challenge.get_element('.m-sb-challenges__rating')
-            rating_str = await rating_ele.get_attribute('class')
-            rating = True if '-result-win' in rating_str else False     # the other is -result-loss
-            rematch_str = await button.get_attribute('class')
-            rematch = True if '-icon-challenge-return' in rematch_str else False
-
-            # if not rating and self.arena_wins_only:
+            # if self.settings['arena_rematches_only'] and not rematch:
             #     continue
 
-            if not rematch: # and self.arena_rematches_only:
-                continue
+            # await self.send_arena_challenge(button)
 
-            await self.send_arena_challenge(button)
+
+        # decide which teams to battle
+        if self.settings['arena_wins_only']:
+            teams = [ele for ele in teams if ele['rating'] < our_rating]
+
+        if self.settings['arena_rematches_only']:
+            teams = [ele for ele in teams if ele['rematch']]
+
+        # this sorts by rematches first and then by their rating
+        # so no matter what the settings are, the bot will still try to:
+        #   maximize energy efficiency (does rematches first)
+        #   win as often as possible (challenges lower rated teams first)
+        teams.sort(key=lambda data: (-data['rematch'], data['rating']))
+
+        await self.send_arena_challenge([ele['button'] for ele in teams])
 
 
 
     @qasync.asyncSlot()
-    async def send_arena_challenge(self, button):
-        await button.click()
-        await self.sleep_(3, 5)
-
-        try: # attempt to click the button that pops up if you've reached max challenges against an opponent
-            max_challenge_button = await self.browser.get_element('.c-overlay-message__close')
-            await max_challenge_button.click()
+    async def send_arena_challenges(self, buttons: list[arsenic.session.Element]):
+        for btn in buttons:
+            await btn.click()
             await self.sleep_(3, 5)
-        except arsenic.errors.NoSuchElement:
-            # this is expected behavior
+
+            # check to see if we ran out of energy or meached max challenges
+            popup = await self.browser.get_elements('.c-overlay-message__close')    # get_elements does NOT raise a NoSuchElement exception if none are found
+            if popup:
+                button = popup[0]
+                message_element = await self.browser.get_element('c-overlay-message__text')
+                message = await message_element.get_text()
+                await button.click()
+                await self.sleep_(3, 5)
+                if message == 'Not enough energy!':
+                    return
+            
             # check for win or loss
             sent_challenges_area = await self.browser.get_element('#challenges-outgoing')
             latest_challenge = await sent_challenges_area.get_element('div')
             class_attributes = await latest_challenge.get_attribute('class')
             is_win = True if '-result-win' in class_attributes else False   # the other is -result-loss
             self.sigs.update_arena_stats.emit(is_win)
-
+                
 
 
     @qasync.asyncSlot()
     async def world_actions(self):
-        if 'https:' in self.settings:
+        if 'http' in self.settings:
             await self.do_world_mission(self.settings['mission_url'])
         else:
             await self.do_world_mission(f'https://www.ninjamanager.com/world/area/{self.settings["mission_url"]}')
