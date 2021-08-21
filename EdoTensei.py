@@ -193,22 +193,15 @@ class EdoTensei:
     async def loop(self):
         while True:
             self.sigs.update_loop_count.emit()
-            # await self.scrape()
-
+            await self.scrape()
             await self.arena_actions()
-            # await self.scrape()
-            # await self.cooldown()
-
-            # await self.world_actions()
-            # await self.scrape()
-            # await self.cooldown()
-            break
+            await self.world_actions()
 
 
 
     @qasync.asyncSlot()
     async def scrape(self):
-        await self.gather_gold_and_energy()
+        await self.gather_gold()
         await self.sleep_(1, 3)
         await self.gather_ninja_data()
         await self.sleep_()
@@ -220,11 +213,24 @@ class EdoTensei:
 
 
     @qasync.asyncSlot()
-    async def gather_gold_and_energy(self):
+    async def gather_gold(self):
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
         gold = int(html.find('div', class_='js-header-gold').span.string.replace(',', ''))
         self.sigs.update_gold.emit(gold)
+
+
+
+    @qasync.asyncSlot()
+    async def gather_energy(self) -> dict[str, int]:
+        raw_html = await self.browser.get_page_source()
+        html = BeautifulSoup(raw_html, 'html.parser')
+        arena_bar = html.find('div', class_='js-header-energy-arena') # header-team__bar header-team__bar-ae  c-bar -type-ae  js-header-energy-arena
+        arena_energy = int(arena_bar.find('div', class_='c-bar__text-cur').string)
+        world_bar = html.find('div', class_='js-header-energy-world')
+        world_energy = int(world_bar.find('div', class_='c-bar__text-cur').string)
+
+        return {'arena': arena_energy, 'world': world_energy}
 
 
 
@@ -304,6 +310,16 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def arena_actions(self):
+        '''
+        note: does not scan the sidebar challenges (the incoming and outgoing sections)
+              because you cannot get a team's rating from them without scraping that team's link
+              look for commits before Aug 21, 2021 to reference old logic for challenging sidebar teams
+        '''
+        # first check if we have enough energy to even do anything
+        arena_energy = await self.gather_energy()['arena']
+        if arena_energy < 5:
+            return
+
         await self.browser.get('https://www.ninjamanager.com/arena')
         await self.sleep_()
 
@@ -314,7 +330,6 @@ class EdoTensei:
 
         # instead of challenging as we traverse, we will collect the team's rating, rematch (bool), and button to make it easier to handle
         # doing it this way will allow us to sort all the challenges in one master list and order it however we like
-
         teams = list()      # list[dict[int, bool, arsenic.session.Element]]
             
         main_challenges = await self.browser.get_elements('.c-arena-box')
@@ -333,31 +348,6 @@ class EdoTensei:
                 'button': button
             })
 
-
-        # this proves challenging because it's not possible to get a team's rating from the sidebar
-        # technically you can by scraping that team's url, visiting their team link, and then scraping for their rating, but that doesn't seem ideal
-        # hopefully we can just rely on main_challenges area
-        # sidebar_challenges = await self.browser.get_elements('.m-sb-challenges__row')        
-        # for challenge in sidebar_challenges:
-        #     # this is smart enough to 'know' when icons change
-        #     button = await challenge.get_element('.m-sb-challenges__challenge')
-        #     rating_ele = await challenge.get_element('.m-sb-challenges__rating')
-        #     rating_str = await rating_ele.get_attribute('class')
-        #     rating = True if '-result-win' in rating_str else False     # the other is -result-loss
-        #     rematch_str = await button.get_attribute('class')
-        #     rematch = True if '-icon-challenge-return' in rematch_str else False
-
-        #     teams.append({'rating': rating})
-
-            # if self.settings['arena_wins_only'] and rating > our_rating:
-            #     continue
-            
-            # if self.settings['arena_rematches_only'] and not rematch:
-            #     continue
-
-            # await self.send_arena_challenge(button)
-
-
         # decide which teams to battle
         if self.settings['arena_wins_only']:
             teams = [ele for ele in teams if ele['rating'] < our_rating]
@@ -372,6 +362,9 @@ class EdoTensei:
         teams.sort(key=lambda data: (-data['rematch'], data['rating']))
 
         await self.send_arena_challenge([ele['button'] for ele in teams])
+
+        await self.scrape()
+        await self.cooldown()
 
 
 
@@ -403,10 +396,21 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def world_actions(self):
+        # INCOMPELTE!!
+        # still need to implement the behavior modes!
+
+        # first check if we have enough energy to even do anything
+        world_energy = await self.gather_energy()['world']
+        if world_energy < 7:    # i think the most expensive mission is 7 energy
+            return
+
         if 'http' in self.settings:
             await self.do_world_mission(self.settings['mission_url'])
         else:
             await self.do_world_mission(f'https://www.ninjamanager.com/world/area/{self.settings["mission_url"]}')
+
+        await self.scrape()
+        await self.cooldown()
 
 
 
