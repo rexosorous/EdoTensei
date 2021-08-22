@@ -159,6 +159,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.arena_rematches_only_checkbox.setCheckState(Qt.Checked) if settings['arena_rematches_only'] else self.arena_rematches_only_checkbox.setCheckState(Qt.Unchecked)
         self.arena_wins_only_checkbox.setCheckState(Qt.Checked) if settings['arena_wins_only'] else self.arena_wins_only_checkbox.setCheckState(Qt.Unchecked)
         self.notes_textbox.setText(settings['notes'])
+        self.item_recipe_tree.clear()
         for item_id in settings['item_helper']:
             self.item_recipe_tree.add_product(item_id, self.db)
         await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
@@ -322,11 +323,11 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
     @qasync.asyncSlot(str)
     async def update_items_table(self, name: str):
         cell = self.items_gained_table.findItems(name, Qt.MatchFixedString)
-        if cell:
+        if cell:    # edit an existing table entry if it exists
             row = self.items_gained_table.row(cell[0])
             qty_cell = self.items_gained_table.itemAt(row, 0)
-            qty_cell.setText(str(int(qty_cell.text()+1)))
-        else:
+            qty_cell.setText(str(int(qty_cell.text())+1))
+        else:       # make a new table entry if one doesn't yet exist
             row = self.items_gained_table.rowCount()
             self.items_gained_table.insertRow(row)
             self.items_gained_table.setItem(row, 0, QTableWidgetItem('1'))
@@ -401,7 +402,7 @@ async def main():
     app = qasync.QApplication.instance()
     if hasattr(app, "aboutToQuit"):
         getattr(app, "aboutToQuit").connect(functools.partial(close_future, future, loop))
-
+        
     window = MainWindow()
     window.show()
     

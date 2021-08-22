@@ -4,6 +4,7 @@ import urllib.request
 from os import listdir
 from enum import Enum
 from asyncio import sleep
+from asyncio import exceptions
 
 # dependencies
 import arsenic
@@ -80,7 +81,7 @@ class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
         self.ninja_exp_curr_label.setText(f'Lv.{int(self.ninja_exp_curr/100)}@{self.ninja_exp_curr%100}%')
         self.ninja_exp_gain_label.setText(f'+{self.ninja_exp_gain}%')
 
-        self.BL_exp_curr = ninja
+        self.BL_exp_curr = BL
         self.BL_exp_gain = self.BL_exp_curr - self.BL_exp_start
         self.bl_exp_curr_label.setText(f'Lv.{int(self.BL_exp_curr/100)}@{self.BL_exp_curr%100}%')
         self.bl_exp_gain_label.setText(f'+{self.BL_exp_gain}%')
@@ -226,9 +227,9 @@ class EdoTensei:
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
         arena_bar = html.find('div', class_='js-header-energy-arena') # header-team__bar header-team__bar-ae  c-bar -type-ae  js-header-energy-arena
-        arena_energy = int(arena_bar.find('div', class_='c-bar__text-cur').string)
+        arena_energy = int(arena_bar.find('span', class_='c-bar__text-cur').string)
         world_bar = html.find('div', class_='js-header-energy-world')
-        world_energy = int(world_bar.find('div', class_='c-bar__text-cur').string)
+        world_energy = int(world_bar.find('span', class_='c-bar__text-cur').string)
 
         return {'arena': arena_energy, 'world': world_energy}
 
@@ -316,8 +317,8 @@ class EdoTensei:
               look for commits before Aug 21, 2021 to reference old logic for challenging sidebar teams
         '''
         # first check if we have enough energy to even do anything
-        arena_energy = await self.gather_energy()['arena']
-        if arena_energy < 5:
+        energy = await self.gather_energy()
+        if energy['arena'] < 5:
             return
 
         await self.browser.get('https://www.ninjamanager.com/arena')
@@ -361,7 +362,7 @@ class EdoTensei:
         #   win as often as possible (challenges lower rated teams first)
         teams.sort(key=lambda data: (-data['rematch'], data['rating']))
 
-        await self.send_arena_challenge([ele['button'] for ele in teams])
+        await self.send_arena_challenges([ele['button'] for ele in teams])
 
         await self.scrape()
         await self.cooldown()
@@ -378,7 +379,7 @@ class EdoTensei:
             popup = await self.browser.get_elements('.c-overlay-message__close')    # get_elements does NOT raise a NoSuchElement exception if none are found
             if popup:
                 button = popup[0]
-                message_element = await self.browser.get_element('c-overlay-message__text')
+                message_element = await self.browser.get_element('.c-overlay-message__text')
                 message = await message_element.get_text()
                 await button.click()
                 await self.sleep_(3, 5)
@@ -400,8 +401,8 @@ class EdoTensei:
         # still need to implement the behavior modes!
 
         # first check if we have enough energy to even do anything
-        world_energy = await self.gather_energy()['world']
-        if world_energy < 7:    # i think the most expensive mission is 7 energy
+        energy = await self.gather_energy()
+        if energy['world'] < 7:    # i think the most expensive mission is 7 energy
             return
 
         if 'http' in self.settings:
@@ -417,13 +418,15 @@ class EdoTensei:
     @qasync.asyncSlot()
     async def do_world_mission(self, url):
         await self.browser.get(url)
+        await self.sleep_()
         
         mission_button = await self.browser.wait_for_element(5, f'div[data-url="{url[url.find(".com/")+4:]}"]')
         await self.sleep_(1, 3)
         await mission_button.click()
         await self.sleep_()
         
-        skip_button = await self.browser.wait_for_element(5, 'div[class="pm-battle-buttons__skip  c-button -color-themed-yes -c-icon -width-auto  js-battle-skip"]')
+        # div[class="pm-battle-buttons__skip  c-button -color-themed-yes -c-icon -width-auto  js-battle-skip"]
+        skip_button = await self.browser.wait_for_element(5, '.pm-battle-buttons__skip')
         await self.sleep_(1, 3)
         await skip_button.click()
         await self.sleep_()
@@ -432,7 +435,7 @@ class EdoTensei:
         html = BeautifulSoup(raw_html, 'html.parser')
         win_text = html.find('div', class_='pm-battle-matchup__title').string
         is_win = True if win_text == 'Victory' else False  # the other is Defeat
-        self.sigs.update_world_stats(is_win)
+        self.sigs.update_world_stats.emit(is_win)
         for drop in html.find_all('div', class_='pm-battle-treasures__drop'):
             # it is not possible to get item id this way
             name = drop.find('div', class_='c-item__name').string
@@ -440,7 +443,7 @@ class EdoTensei:
             if success:
                 self.sigs.update_items_gained.emit(name)
 
-        finish_button = await self.browser.wait_for_element(5, f'div[class=pm-battle-buttons__finish]')
+        finish_button = await self.browser.wait_for_element(5, f'.pm-battle-buttons__finish')
         await self.sleep_(1, 3)
         await finish_button.click()
 
@@ -448,7 +451,8 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def cooldown(self):
-        await self.sleep_(self.settings['sleep_lower'], self.settings['sleep_upper'])
+        await self.sleep_(30, 60)
+        # await self.sleep_(self.settings['sleep_lower'], self.settings['sleep_upper'])
 
 
 
