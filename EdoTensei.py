@@ -4,7 +4,6 @@ import urllib.request
 from os import listdir
 from enum import Enum
 from asyncio import sleep
-from asyncio import exceptions
 
 # dependencies
 import arsenic
@@ -299,13 +298,47 @@ class EdoTensei:
         
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
+
         mat_area = html.find('div', id='material-list')
         materials = mat_area.find_all('div', class_='pc-forge-ingredient')
-
         for mat in materials:
             name = mat.find('div', class_='c-item__name').string
             quantity = int(mat.find('div', class_='c-item__amount').string)
             self.db.update_quantity(name, quantity)
+
+
+        equipment_area = html.find('div', id='equipment-list')
+        equipment = equipment_area.find_all('div', class_='pc-forge-ingredient')
+        for equip in equipment:
+            name = equip.find('div', class_='c-item__name').string
+            self.db.update_quantity(name, 1)    # if you have multiple, it'll show up as multiple entires
+
+
+        bloodlines_area = html.find('div', id='bloodlines-list')
+        bloodlines = bloodlines_area.find_all('div', class_='pc-forge-ingredient')
+        for bl in bloodlines:
+            name_area = bl.find('div', class_='c-item__name')
+            if name_area.find('em'):
+                stripped_strings = list(name_area.stripped_strings)
+                name = stripped_strings[1].replace('"', '')
+                lvl = int(stripped_strings[0][stripped_strings[0].find('Lv.')+3:])
+            else:
+                name = name_area.string
+                lvl = 0
+            self.db.update_quantity(name, lvl)  # the level requirements are treated as quantities in db. so needing a lv 40 sasuke is treated as needing 40 sasuke items in db
+
+
+        ninjas_area = html.find('div', id='ninjas-list')
+        ninjas = ninjas_area.find_all('div', class_='pc-forge-ingredient')
+        for nin in ninjas:
+            name = nin.find('div', class_='c-card__name').string
+            if lvl := nin.find('span', class_='c-card__lvl-nr'):
+                lvl = int(lvl.string)
+            else:
+                lvl = 0
+            self.db.update_quantity(name, lvl)  # the level requirements are treated as quantities in db. so needing a lv 40 sasuke is treated as needing 40 sasuke items in db  
+
+        self.sigs.update_item_quantities.emit()          
             
 
 
@@ -389,7 +422,8 @@ class EdoTensei:
             # check for win or loss
             sent_challenges_area = await self.browser.get_element('#challenges-outgoing')
             latest_challenge = await sent_challenges_area.get_element('div')
-            class_attributes = await latest_challenge.get_attribute('class')
+            result_div = await latest_challenge.get_element('.m-sb-challenges__rating')
+            class_attributes = await result_div.get_attribute('class')
             is_win = True if '-result-win' in class_attributes else False   # the other is -result-loss
             self.sigs.update_arena_stats.emit(is_win)
                 
@@ -405,7 +439,7 @@ class EdoTensei:
         if energy['world'] < 7:    # i think the most expensive mission is 7 energy
             return
 
-        if 'http' in self.settings:
+        if 'http' in self.settings['mission_url']:
             await self.do_world_mission(self.settings['mission_url'])
         else:
             await self.do_world_mission(f'https://www.ninjamanager.com/world/area/{self.settings["mission_url"]}')
@@ -451,8 +485,7 @@ class EdoTensei:
 
     @qasync.asyncSlot()
     async def cooldown(self):
-        await self.sleep_(30, 60)
-        # await self.sleep_(self.settings['sleep_lower'], self.settings['sleep_upper'])
+        await self.sleep_(self.settings['sleep_lower']*60, self.settings['sleep_upper']*60)
 
 
 

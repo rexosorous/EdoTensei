@@ -995,11 +995,7 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QSpinBox" name="sleep_lower_number">
-                 <property name="maximum">
-                  <number>10000</number>
-                 </property>
-                </widget>
+                <widget class="QDoubleSpinBox" name="sleep_lower_number"/>
                </item>
                <item>
                 <widget class="QLabel" name="label_26">
@@ -1012,9 +1008,12 @@
                 </widget>
                </item>
                <item>
-                <widget class="QSpinBox" name="sleep_upper_number">
-                 <property name="maximum">
-                  <number>10000</number>
+                <widget class="QDoubleSpinBox" name="sleep_upper_number"/>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_22">
+                 <property name="text">
+                  <string>minutes</string>
                  </property>
                 </widget>
                </item>
@@ -1081,7 +1080,7 @@
             <item row="6" column="0">
              <widget class="QLabel" name="label_10">
               <property name="text">
-               <string>Mission</string>
+               <string>Mission URL</string>
               </property>
              </widget>
             </item>

@@ -99,6 +99,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.sigs.update_loop_count.connect(self.update_loop_label)
         self.sigs.update_error_count.connect(self.update_error_label)
         self.sigs.update_gold.connect(self.update_gold_labels)
+        self.sigs.update_item_quantities.connect(self.update_item_helper_quantities)
         self.sigs.update_world_stats.connect(self.update_world_labels)
         self.sigs.update_arena_stats.connect(self.update_arena_labels)
         self.sigs.update_items_gained.connect(self.update_items_table)
@@ -226,6 +227,16 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         # save the newly added recipe to settings
         settings = {'item_helper': self.item_recipe_tree.get_product_ids()}
         util.save_settings(self.account, settings)
+
+
+
+    @qasync.asyncSlot()
+    async def update_item_helper_quantities(self):
+        '''
+        This updates the quantities of items owned in the item helper tree. This makes sure the number stays accurate as items are gained (or lost) during runtime
+        Usually called when scraping forge.
+        '''
+        self.item_recipe_tree.update_quantities(self.db)
 
 
 

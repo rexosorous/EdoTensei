@@ -14,6 +14,7 @@ class Signals(QObject):
     update_loop_count = pyqtSignal()
     update_error_count = pyqtSignal()   # not implemented yet
     update_gold = pyqtSignal(int)
+    update_item_quantities = pyqtSignal()
     update_world_stats = pyqtSignal(bool)
     update_arena_stats = pyqtSignal(bool)
     update_items_gained = pyqtSignal(str)

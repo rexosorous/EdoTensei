@@ -117,6 +117,24 @@ class Tree:
 
 
 
+    def update_quantities(self, db, current_widgets: list[QTreeWidgetItem] = None):
+        '''
+        Recursively updates the quantities of items owned in the item helper tree. This makes sure the number stays accurate as items are gained (or lost) during runtime
+        Usually called when scraping forge.
+        '''
+        if not current_widgets:
+            current_widgets = [self.Qt.topLevelItem(index) for index in range(self.Qt.topLevelItemCount())]
+
+        for parent in current_widgets:
+            qty = db.get_owned_qty(parent.id_)
+            parent.setText(2, str(qty))
+            children = [parent.child(index) for index in range(parent.childCount())]
+            if not children:
+                continue
+            self.update_quantities(db, children)
+
+
+
     def remove_recipe(self, selected_widget: QTreeWidgetItem = None):
         '''
         Removes a product and its recipe.
@@ -153,7 +171,7 @@ class Tree:
         for parent in current_widgets:
             children = [parent.child(index) for index in range(parent.childCount())]
             if not children:
-                break
+                continue
             item_ids.update(self.get_item_ids(children))
         return item_ids
 
