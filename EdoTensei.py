@@ -330,7 +330,11 @@ class EdoTensei:
             else:
                 name = name_area.string
                 lvl = 0
-            self.db.update_quantity(name, 1)
+
+            if '-c-hide' in bl['class']:
+                self.db.update_quantity(name, 0)
+            else:
+                self.db.update_quantity(name, 1)
 
 
         ninjas_area = html.find('div', id='ninjas-list')
@@ -341,7 +345,11 @@ class EdoTensei:
                 lvl = int(lvl.string)
             else:
                 lvl = 0
-            self.db.update_quantity(name, 1)
+
+            if '-c-hide' in ninjas['class']:
+                self.db.update_quantity(name, 0)
+            else:
+                self.db.update_quantity(name, 1)
 
         self.sigs.update_item_quantities.emit()
 
