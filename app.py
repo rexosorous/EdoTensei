@@ -86,7 +86,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
     def connect_events(self):
         '''
         Connects all the button clicks, signals, and other events to functions
-        
+
         Note:
             Does not include events created in self.create_context_menus()
         '''
@@ -163,7 +163,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         self.item_recipe_tree.clear()
         for item_id in settings['item_helper']:
             self.item_recipe_tree.add_product(item_id, self.db)
-        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
+        self.item_recipe_tree.update_quantities(self.db)
+        await self.populate_item_location_table(self.item_recipe_tree.map.keys())
 
 
 
@@ -222,8 +223,8 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
             item_id (int)
         '''
         self.item_recipe_tree.add_product(item_id, self.db)
-        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
-    
+        await self.populate_item_location_table(self.item_recipe_tree.map.keys())
+
         # save the newly added recipe to settings
         settings = {'item_helper': self.item_recipe_tree.get_product_ids()}
         util.save_settings(self.account, settings)
@@ -256,7 +257,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         Called when a user right clicks in self.item_recipe_tree and chooses "Remove This Recipe"
         '''
         self.item_recipe_tree.remove_recipe()
-        await self.populate_item_location_table(self.item_recipe_tree.get_item_ids())
+        await self.populate_item_location_table(self.item_recipe_tree.map.keys())
 
         # save to settings
         settings = {'item_helper': self.item_recipe_tree.get_product_ids()}
@@ -278,7 +279,7 @@ class MainFrame(QFrame, gui.main_frame.Ui_Frame):
         await self.bot.update_settings(new_settings)
 
 
-        
+
 
 
 
@@ -387,7 +388,7 @@ class MainWindow(QMainWindow, gui.main_window.Ui_MainWindow):
         '''
         Gracefully shuts down both bots
         This is a feature of qasync that triggers whenever the program is closed
-        
+
         Args:
             event (PyQt5.QtGui.QCloseEvent)
         '''
@@ -413,10 +414,10 @@ async def main():
     app = qasync.QApplication.instance()
     if hasattr(app, "aboutToQuit"):
         getattr(app, "aboutToQuit").connect(functools.partial(close_future, future, loop))
-        
+
     window = MainWindow()
     window.show()
-    
+
     await future
     return True
 

@@ -38,7 +38,7 @@ def load_settings(account: str) -> dict():
 def save_settings(account: str, settings: dict) -> dict:
     '''
     Writes to settings.json with the new settings
-    
+
     Args:
         settings (dict): does NOT need to be the full settings dict. can be a partial/incomplete dict and
                          this only overwrite the fields given to it
@@ -48,12 +48,12 @@ def save_settings(account: str, settings: dict) -> dict:
     '''
     with open('settings.json', 'r') as file:
         whole_settings = json.load(file)
-    
+
     for key, val in settings.items():
         # only change certain settings, not all of them
         whole_settings[account][key] = val
 
     with open('settings.json', 'w+') as file:
         json.dump(whole_settings, file, indent=4)
-    
+
     return whole_settings[account]

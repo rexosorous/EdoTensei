@@ -138,7 +138,7 @@ class RecipeWindow(QMainWindow, gui.recipe_window.Ui_MainWindow):
     async def show_drops(self, item_ids: set[int]):
         '''
         Populates self.location_table with the location data of each item in the selected recipe
-        
+
         Args:
             item_ids (set[int]): all the items to provide location data for. because this is a set,
                                  there will not be any duplicate entries

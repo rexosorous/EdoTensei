@@ -54,9 +54,16 @@ class Tree:
 
     Attributes:
         Qt (QTreeWidget)
+        map (dict): A map to all of the TreeItems by item ID
+            {
+                item_id (int): list[TreeItem]
+            }
     '''
     def __init__(self, Qt):
         self.Qt = Qt
+        self.map = dict()
+
+
 
     def create_context_menu(self):
         '''
@@ -80,58 +87,83 @@ class Tree:
         '''
         item_name = db.get_item_name(item_id)
         product_owned_qty = db.get_owned_qty(item_id)
-        product_needed_qty = '0' if product_owned_qty else '1' 
-        product_widget = TreeItem(None, [item_name, '1', str(product_owned_qty), product_needed_qty], item_id)
-        self.build_recipe(product_widget, db)
+        product_need_qty = 0 if product_owned_qty else 1
+        product_widget = TreeItem(None, item_id, item_name, 1, product_owned_qty, product_need_qty)
+
+        if item_id not in self.map:
+            self.map[item_id] = list()
+        self.map[item_id].append(product_widget)
+
+        self.build_recipe(db, product_widget)
         self.Qt.addTopLevelItem(product_widget)
         self.Qt.expandAll()
+        for index in range(self.Qt.columnCount()):
+            self.Qt.resizeColumnToContents(index)
 
 
 
-    def build_recipe(self, parent_widget: QTreeWidgetItem, db):
+    def build_recipe(self, db, parent_widget: QTreeWidgetItem):
         '''
         Recursively builds the full recipe for a product item
         This works by finding the immediate children/ingredients for an item,
         then for each of those, find the immediate children and so on and so forth
         until all recipe ingredients have been found.
-        
+
+        Note:
+            The need quantity set here is only the amount needed for THIS recipe.
+            Take this example:
+                legendary weapon    1   0   1
+                    alkahest        5   0   5
+                bloodline           1   0   1
+                    alkahest        10  0   10
+            The need quantity for each alkahest is correct for that recipe, but taking all the cipes into account,
+            the need qty should be 15.
+            After all recipes are added, self.fix_need_qty() should be called to fix this issue.
+
         Args:
-            parent_widget (TreeItem)
             db (DBHandler)
+            parent_widget (TreeItem)
         '''
-        data = db.get_item_recipe(parent_widget.id_)
-        if not data:
+        recipe = db.get_item_recipe(parent_widget.id_)
+        if not recipe:
+            # this means that there's no children for this recipe (it's a base item)
             return
-        
-        for ingredient in data:
-            parent_needed_qty = int(parent_widget.text(3))
-            craft_qty = ingredient[2]
-            owned_qty = ingredient[3]
-            needed_qty = (parent_needed_qty * craft_qty) - owned_qty
-            if needed_qty < 0:
-                needed_qty = 0
 
-            child = TreeItem(parent_widget, [str(x) for x in ingredient[1:]], ingredient[0])
-            child.setText(3, str(needed_qty))
-            self.build_recipe(child, db)
+        for ingredient_data in recipe:
+            child = TreeItem(parent_widget, *ingredient_data, ingredient_data[2] * parent_widget.need_qty - ingredient_data[3])
+            child.set_need_qty((child.recipe_qty * parent_widget.need_qty) - child.owned_qty)
+            if child.id_ not in self.map:
+                self.map[child.id_] = list()
+            self.map[child.id_].append(child)
+            self.build_recipe(db, child)
 
 
 
-    def update_quantities(self, db, current_widgets: list[QTreeWidgetItem] = None):
+    def update_quantities(self, db):
         '''
-        Recursively updates the quantities of items owned in the item helper tree. This makes sure the number stays accurate as items are gained (or lost) during runtime
-        Usually called when scraping forge.
-        '''
-        if not current_widgets:
-            current_widgets = [self.Qt.topLevelItem(index) for index in range(self.Qt.topLevelItemCount())]
+        Recursively updates the quantities of items owned and items needed in the item helper tree. This makes sure the numbers
+        stay accurate as items are gained (or lost) during runtime.
 
-        for parent in current_widgets:
-            qty = db.get_owned_qty(parent.id_)
-            parent.setText(2, str(qty))
+        Args:
+            db (DBHandler)
+            widgets (list[TreeItem])
+        '''
+        def recursive(db, parent):
             children = [parent.child(index) for index in range(parent.childCount())]
-            if not children:
-                continue
-            self.update_quantities(db, children)
+            for child in children:
+                owned_qty = db.get_owned_qty(child.id_)
+                need_qty = (child.recipe_qty * parent.need_qty) - owned_qty
+                child.set_owned_qty(owned_qty)
+                child.set_need_qty(need_qty)
+                recursive(db, child)
+
+        roots = [self.Qt.topLevelItem(index) for index in range(self.Qt.topLevelItemCount())]
+        for product in roots:
+            owned_qty = db.get_owned_qty(product.id_)
+            if owned_qty:
+                product.set_owned_qty(owned_qty)
+                product.set_need_qty(0)
+            recursive(db, product)
 
 
 
@@ -154,33 +186,10 @@ class Tree:
 
 
 
-    def get_item_ids(self, current_widgets: list[QTreeWidgetItem] = None) -> set[int]:
-        '''
-        Recursively iterates through all the items in this tree and compiles a set of every item id 
-
-        Args:
-            current_widgets (list[TreeItem], optional): if not provided
-
-        Returns:
-            set[int]
-        '''
-        if not current_widgets:
-            current_widgets = [self.Qt.topLevelItem(index) for index in range(self.Qt.topLevelItemCount())]
-        item_ids = set([x.id_ for x in current_widgets])
-
-        for parent in current_widgets:
-            children = [parent.child(index) for index in range(parent.childCount())]
-            if not children:
-                continue
-            item_ids.update(self.get_item_ids(children))
-        return item_ids
-
-
-
     def get_product_ids(self) -> list[int]:
         '''
         Only returns the product ids and not any ingredient ids
-         
+
         Returns:
             list[int]
         '''
@@ -199,15 +208,41 @@ class TreeItem(QTreeWidgetItem):
     '''
     Basically just a QTreeWidgetItem that can hold custom data
 
+    Columns:
+        0: name
+        1: recipe qty
+        2: owned qty
+        3: need qty
+
     Args:
-        item_id (int): the item id that this represents
+        item_id (int)
+        name (str)
+        recipe_qty (int)
+        owned_qty (int)
+        need_qty (int, optional)
 
     Attributes:
         item_id (int): see above
     '''
-    def __init__(self, parent: QTreeWidgetItem, display_values: list[str], item_id: int):
-        super().__init__(parent, display_values)
+    def __init__(self, parent: QTreeWidgetItem, item_id: int, name: str, recipe_qty: int, owned_qty: int, need_qty: int = 0):
+        super().__init__(parent, [name, str(recipe_qty), str(owned_qty), str(need_qty)])
         self.id_ = item_id
+        self.name = name
+        self.recipe_qty = recipe_qty
+        self.owned_qty = owned_qty
+        self.need_qty = need_qty
+        if self.need_qty < 0:
+            self.need_qty = 0
+
+    def set_owned_qty(self, qty: int):
+        self.owned_qty = qty
+        self.setText(2, str(qty))
+
+    def set_need_qty(self, qty: int):
+        self.need_qty = qty
+        if self.need_qty < 0:
+            self.need_qty = 0
+        self.setText(3, str(self.need_qty))
 
 
 

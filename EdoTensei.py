@@ -31,14 +31,14 @@ class NinjaCard(QFrame, gui.ninja_card_frame.Ui_Frame):
     Note:
         all instances of exp in args and attr are % values that have lvl included
         EX: lvl 5 @ 30% == 530% == 530
-    
+
     Args:
         name (str)
         image_dir (str)
         exp (int)
         BL_name (str)
         BL_exp (int)
-    
+
     Attributes:
         name (str)
         image_dir (str)
@@ -131,7 +131,7 @@ class EdoTensei:
     @qasync.asyncSlot(dict)
     async def update_settings(self, settings: dict):
         self.settings = settings
-        
+
 
 
     @qasync.asyncSlot()
@@ -166,7 +166,7 @@ class EdoTensei:
         else:
             # if a cookie is not present in settings.json, use the username and password
             await self.browser.get('https://www.ninjamanager.com/account/login')
-            
+
             username_field = await self.browser.wait_for_element(5, 'input[id="input-login"]')
             await self.sleep_()
             await username_field.send_keys(self.settings['username'])
@@ -178,7 +178,7 @@ class EdoTensei:
             submit_button = await self.browser.get_element('input[id="login-nm-button"]')
             await self.sleep_()
             await submit_button.click()
-        
+
         await self.sleep_()
         await self.browser.get('https://www.ninjamanager.com/')
         team_name_area = await self.browser.wait_for_element(5, '.header-team__details-name')
@@ -248,35 +248,40 @@ class EdoTensei:
             await self.sleep_()
             raw_html = await self.browser.get_page_source()
             html = BeautifulSoup(raw_html, 'html.parser')
-            
+
             ninja_card = html.find('div', class_='m-ninja-details__column -c-squeezed').div
             id_ = ninja_card['data-tnid']
             img_url = 'https://www.ninjamanager.com' + ninja_card.find('div', class_='c-card__pic-inner').img['src'].replace('large', 'medium').replace('jpg', 'png')
             img_filename = img_url.split('/')[-1]
             name = img_filename[:-4].replace('-', ' ')
             lvl = int(ninja_card.find('span', class_='c-card__lvl-nr').string)
-            try:
-                exp = ninja_card.find('div', class_='c-exp__fill')['style']
-                exp = int(exp[7:-2])
-            except arsenic.errors.NoSuchElement:
+            exp_area = ninja_card.find('div', class_='c-exp__fill')
+            if exp_area:
+                exp = int(exp_area['style'][7:-2])
+            else:
                 exp = 0
             ninja_exp = lvl*100 + exp
 
-            BL_card = html.find('div', id='equipped-bloodline')
-            try:
-                BL_name = list(BL_card.find('div', class_='c-item__name').stripped_strings)[1]
-                BL_lvl = BL_card.find('div', class_='c-item__name').em.string
-                BL_lvl = int(BL_lvl[3:])
-                try: 
-                    BL_exp = BL_card.find('div', class_='c-exp__fill')['style']
-                    BL_exp = int(BL_exp[7:-1])
-                except arsenic.errors.NoSuchElement:
-                    exp = 0
-                BL_exp = BL_lvl*100 + BL_exp
-            except:
+            BL_card = html.find('div', id='equipped-bloodline') # summons don't have this
+            if BL_card:
+                BL_stripped_strings = list(BL_card.find('div', class_='c-item__name').stripped_strings)
+                if len(BL_stripped_strings) > 1:
+                    BL_name = BL_stripped_strings[1]
+                    BL_lvl = BL_card.find('div', class_='c-item__name').em.string
+                    BL_lvl = int(BL_lvl[3:])
+                    BL_exp_area = BL_card.find('div', class_='c-exp__fill')
+                    if BL_exp_area:
+                        BL_exp = int(BL_exp_area['style'][7:-1])
+                    else:
+                        BL_exp = 0
+                    BL_exp = BL_lvl*100 + BL_exp
+                else:
+                    BL_name = 'No Bloodline'
+                    BL_exp = 0
+            else:
                 BL_name = 'No Bloodline'
                 BL_exp = 0
-            
+
 
             if img_filename not in listdir('images'):
                 with open(f'images/{img_filename}', 'wb+') as file:
@@ -287,7 +292,7 @@ class EdoTensei:
                 self.sigs.add_ninja_card.emit(self.ninjas[id_])
             else:
                 self.ninjas[id_].update_exp(ninja=ninja_exp, BL=BL_exp)
-            
+
         await self.sleep_()
 
 
@@ -295,7 +300,7 @@ class EdoTensei:
     @qasync.asyncSlot()
     async def gather_forge_data(self):
         await self.browser.get('https://www.ninjamanager.com/forge')
-        
+
         raw_html = await self.browser.get_page_source()
         html = BeautifulSoup(raw_html, 'html.parser')
 
@@ -325,7 +330,7 @@ class EdoTensei:
             else:
                 name = name_area.string
                 lvl = 0
-            self.db.update_quantity(name, lvl)  # the level requirements are treated as quantities in db. so needing a lv 40 sasuke is treated as needing 40 sasuke items in db
+            self.db.update_quantity(name, 1)
 
 
         ninjas_area = html.find('div', id='ninjas-list')
@@ -336,10 +341,10 @@ class EdoTensei:
                 lvl = int(lvl.string)
             else:
                 lvl = 0
-            self.db.update_quantity(name, lvl)  # the level requirements are treated as quantities in db. so needing a lv 40 sasuke is treated as needing 40 sasuke items in db  
+            self.db.update_quantity(name, 1)
 
-        self.sigs.update_item_quantities.emit()          
-            
+        self.sigs.update_item_quantities.emit()
+
 
 
     @qasync.asyncSlot()
@@ -365,7 +370,7 @@ class EdoTensei:
         # instead of challenging as we traverse, we will collect the team's rating, rematch (bool), and button to make it easier to handle
         # doing it this way will allow us to sort all the challenges in one master list and order it however we like
         teams = list()      # list[dict[int, bool, arsenic.session.Element]]
-            
+
         main_challenges = await self.browser.get_elements('.c-arena-box')
         for challenge in main_challenges:
             button = await challenge.get_element('.c-arena-box__challenge')
@@ -418,7 +423,7 @@ class EdoTensei:
                 await self.sleep_(3, 5)
                 if message == 'Not enough energy!':
                     return
-            
+
             # check for win or loss
             sent_challenges_area = await self.browser.get_element('#challenges-outgoing')
             latest_challenge = await sent_challenges_area.get_element('div')
@@ -426,7 +431,7 @@ class EdoTensei:
             class_attributes = await result_div.get_attribute('class')
             is_win = True if '-result-win' in class_attributes else False   # the other is -result-loss
             self.sigs.update_arena_stats.emit(is_win)
-                
+
 
 
     @qasync.asyncSlot()
@@ -453,12 +458,12 @@ class EdoTensei:
     async def do_world_mission(self, url):
         await self.browser.get(url)
         await self.sleep_()
-        
+
         mission_button = await self.browser.wait_for_element(5, f'div[data-url="{url[url.find(".com/")+4:]}"]')
         await self.sleep_(1, 3)
         await mission_button.click()
         await self.sleep_()
-        
+
         # div[class="pm-battle-buttons__skip  c-button -color-themed-yes -c-icon -width-auto  js-battle-skip"]
         skip_button = await self.browser.wait_for_element(5, '.pm-battle-buttons__skip')
         await self.sleep_(1, 3)
