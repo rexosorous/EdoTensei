@@ -346,7 +346,7 @@ class EdoTensei:
             else:
                 lvl = 0
 
-            if '-c-hide' in ninjas['class']:
+            if '-c-hide' in nin['class']:
                 self.db.update_quantity(name, 0)
             else:
                 self.db.update_quantity(name, 1)

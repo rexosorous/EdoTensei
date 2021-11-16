@@ -130,7 +130,7 @@ class RecipeWindow(QMainWindow, gui.recipe_window.Ui_MainWindow):
         selected_item_id = selected_list_item.id_
         self.recipe_tree.clear()
         self.recipe_tree.add_product(selected_item_id, self.db)
-        self.show_drops(self.recipe_tree.get_item_ids())
+        self.show_drops(self.recipe_tree.map.keys())
 
 
 

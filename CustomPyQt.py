@@ -199,6 +199,7 @@ class Tree:
 
     def clear(self):
         self.Qt.clear()
+        self.map = dict()
 
 
 
