@@ -164,7 +164,7 @@ class EdoTensei:
         await self.browser.get('https://www.ninjamanager.com/account/login')
         header_msg = await self.browser.wait_for_element(5, '.c-page-header__desc')
         header_msg_txt = await header_msg.get_text()
-        if header_msg_txt.contains('logged in'): # check if error message exists
+        if 'logged in' in header_msg_txt: # check if error message exists
             return
 
         if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
