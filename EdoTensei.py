@@ -160,6 +160,12 @@ class EdoTensei:
         '''
         Logs in. Prefers using cookies if provided in settings, but will also work with username and password
         '''
+        # check if already logged in
+        await self.browser.get('https://www.ninjamanager.com/account/login')
+        await self.browser.wait_for_element(5, 'div[id="logo"]')
+        if await self.browser.get_elements('.c-page-header__desc'): # check if error message exists
+            return
+
         if self.settings['login_cookie'] and self.settings['login_cookie'] != 'OR INSTEAD OF USERNAME+PASSWORD, YOU CAN PUT YOUR LOGIN COOKIE HERE':
             # prefer using cookies over login info
             await self.browser.add_cookie(name='nm_al', value=self.settings['login_cookie'])
@@ -192,10 +198,14 @@ class EdoTensei:
     @qasync.asyncSlot()
     async def loop(self):
         while True:
-            self.sigs.update_loop_count.emit()
-            await self.scrape()
-            await self.arena_actions()
-            await self.world_actions()
+            try:
+                self.sigs.update_loop_count.emit()
+                await self.scrape()
+                await self.arena_actions()
+                await self.world_actions()
+            except:
+                await self.sleep_(60, 120)
+                await self.login()
 
 
 
